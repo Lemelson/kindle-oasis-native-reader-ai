@@ -1,0 +1,22 @@
+{
+  "items": [
+    {
+      "name": "Native Reader Patch",
+      "priority": -2,
+      "items": [
+        {
+          "name": "Install Share->Trans v2",
+          "priority": 1,
+          "action": "bin/install-v2.sh",
+          "exitmenu": true
+        },
+        {
+          "name": "Rollback Reader Plugin",
+          "priority": 2,
+          "action": "bin/rollback.sh",
+          "exitmenu": true
+        }
+      ]
+    }
+  ]
+}
