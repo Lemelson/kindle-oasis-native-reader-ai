@@ -17,20 +17,32 @@
           "exitmenu": true
         },
         {
-          "name": "Install stable Trans only",
+          "name": "Install AI Note v1",
           "priority": 3,
+          "action": "./bin/install-ai-note-v1.sh",
+          "exitmenu": true
+        },
+        {
+          "name": "Install stable Trans only",
+          "priority": 4,
           "action": "./bin/install-stable-trans-only.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback Reader Plugin",
-          "priority": 4,
+          "priority": 5,
           "action": "./bin/rollback.sh",
           "exitmenu": true
         },
         {
+          "name": "Rollback AI Note Patch",
+          "priority": 6,
+          "action": "./bin/rollback-ai.sh",
+          "exitmenu": true
+        },
+        {
           "name": "Rollback Translator Jar",
-          "priority": 5,
+          "priority": 7,
           "action": "./bin/rollback-translator.sh",
           "exitmenu": true
         }

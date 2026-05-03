@@ -26,9 +26,19 @@ reboot
 - Patch v1 `Reader-plugin.jar`: `d232b2c407621e79f63b05d39dc08221ee60d6d65c955ad41f60e607232ec62d`
 - Patch v2 `Reader-plugin.jar`: `aa991071fa84ceb5dc097e2f63abc6c1e7f210176fe31bbd9e5d09af70630609`
 - Patch v3 `Reader-plugin.jar`: `d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907`
+- AI Note v1 `ReaderSDK-impl.jar`: `3b921ef24f9b0f1c8b61cf5abcbbce620dd30c5a56e38b1308c5e1c9a3912499`
 - Original `translator.jar`: `32fec956281a3dcb6cd6895ce7c58308f425766c0bdbe0edd8b420181ff61052`
 - Russian target default v1 `translator.jar`: `3fd5e1ef3c27620fcc577035b9eca1da43eea3e2357d6628048c3ab74eda3259`
 - Russian target default v2 `translator.jar`: `53397351c254817305065cd9d245f9d65ab94f8408a2c9200823ea074defd711`
+
+## Stable checkpoint
+
+The confirmed working native reader state before AI changes is:
+
+- Git commit: `87780e9 Checkpoint stable Trans Russian patch`
+- Git tag: `stable-trans-ru-v3-confirmed`
+
+That state keeps the visible `Trans` button and Russian target behavior, without any AI/Note changes.
 
 ## Patch v1
 
@@ -59,6 +69,30 @@ Patch v2 was installed through KUAL and verified on-device: the visible `Trans` 
 Keeps the visible `Trans` button behavior from patch v2, but before opening the native translator card it calls the original Amazon `TranslatorStorage.mA("ru")` through reflection.
 
 This uses Kindle's own storage path for target-language persistence and leaves `translator.jar` original. It is intended to avoid the crashes and selection-dialog suppression caused by patching translator classes directly.
+
+## AI Note v1
+
+Replaces the add-note action class in `ReaderSDK-impl.jar` so the visible `Note` slot becomes `AI`.
+
+Behavior intended:
+
+- `Trans` remains handled by `Reader-plugin.v3.jar`.
+- `AI` opens a small prompt chooser: Explain, Translate, Words, Grammar, Custom.
+- The selected text is collected through Kindle's own `Book.r(start, end)` path.
+- Book title, authors, language, start/end positions, and best-effort nearby text are included in the OpenRouter prompt.
+- The OpenRouter provider is configured by `/mnt/us/native-reader-research/ai-assistant.properties`.
+- Requests use `provider.allow_fallbacks=false` and default to `deepseek/deepseek-v4-flash`.
+- Responses are shown in a non-fullscreen Swing dialog over the book.
+
+Build notes:
+
+- Helper classes are compiled from `patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks/`.
+- `AnnotationsSelectionDialogProvider$AddNoteAction.class` is bytecode-patched from the original class by `patch-work/scripts/build_ai_note_patch.py`, because it extends a non-static Kindle inner class and the Java source compiler otherwise emits the wrong constructor descriptor.
+
+Rollback:
+
+- KUAL -> Native Reader Patch -> `Rollback AI Note Patch` restores the original `/opt/amazon/ebook/lib/ReaderSDK-impl.jar`.
+- KUAL -> Native Reader Patch -> `Install Trans + Russian target v3` returns to the stable Trans-only behavior.
 
 ## Translator Russian Target Default v1
 
@@ -95,8 +129,10 @@ Because USBNet was not reachable after the first reboot, a KUAL extension was ad
 - Menu: `Native Reader Patch`
 - Action: `Install Share->Trans v2`
 - Action: `Install Trans + Russian target v3`
+- Action: `Install AI Note v1`
 - Action: `Install stable Trans only`
 - Action: `Rollback Reader Plugin`
+- Action: `Rollback AI Note Patch`
 - Action: `Rollback Translator Jar`
 
 The installers store pre-change backups, write `/mnt/us/native-reader-research/nativepatch.log`, and reboot. The reader rollback restores the original `Reader-plugin.jar.orig.20260504-013002` backup. The translator rollback restores `/mnt/us/native-reader-research/jars/translator.jar`. `Install stable Trans only` installs the working `Reader-plugin.v2.jar` while restoring the original `translator.jar`.
