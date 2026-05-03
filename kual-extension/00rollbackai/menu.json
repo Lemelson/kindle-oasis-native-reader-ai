@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "name": "Emergency Rollback AI",
+      "priority": -100,
+      "items": [
+        {
+          "name": "ROLLBACK AI NOW",
+          "priority": 1,
+          "action": "./bin/rollback-ai-now.sh",
+          "exitmenu": true
+        }
+      ]
+    }
+  ]
+}
