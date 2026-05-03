@@ -1,0 +1,10 @@
+decompiled/
+from-kindle/
+extracted-resources/
+patch-work/classes/
+patch-work/patched/
+patch-work/patched-v2/
+*.jar
+*.class
+*.err
+.DS_Store
