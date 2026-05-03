@@ -11,9 +11,9 @@
           "exitmenu": true
         },
         {
-          "name": "Install Trans + Russian target v2",
+          "name": "Install Trans + Russian target v3",
           "priority": 2,
-          "action": "./bin/install-trans-ru-v2.sh",
+          "action": "./bin/install-trans-ru-v3.sh",
           "exitmenu": true
         },
         {

@@ -39,6 +39,7 @@ public class ShareSelectedTextAction extends ReaderAction {
         if (card == null) {
             return;
         }
+        forceRussianTargetLanguage();
         SelectionDialog dialog = aam.Jl().HF();
         try {
             Object smartCardDialog = getField(dialog, "bBS");
@@ -65,6 +66,19 @@ public class ShareSelectedTextAction extends ReaderAction {
             }
         }
         return null;
+    }
+
+    private void forceRussianTargetLanguage() {
+        try {
+            Class storageClass = Class.forName(
+                    "com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage");
+            Object storage = storageClass.getConstructor(new Class[] { ReaderSDK.class })
+                    .newInstance(new Object[] { aam });
+            Method saveTargetLanguage = storageClass.getMethod("mA", new Class[] { String.class });
+            saveTargetLanguage.invoke(storage, new Object[] { "ru" });
+        } catch (Throwable ignored) {
+            // Keep the translate button usable even if the translator storage API changes.
+        }
     }
 
     public int getType() { return 2; }
