@@ -27,6 +27,7 @@ reboot
 - Patch v2 `Reader-plugin.jar`: `aa991071fa84ceb5dc097e2f63abc6c1e7f210176fe31bbd9e5d09af70630609`
 - Patch v3 `Reader-plugin.jar`: `d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907`
 - AI Note v1 `ReaderSDK-impl.jar`: `3b921ef24f9b0f1c8b61cf5abcbbce620dd30c5a56e38b1308c5e1c9a3912499`
+- AI Note v2 `ReaderSDK-impl.jar`: `b5bb99381b3ef3e86560534a09572ce81e834686d950f8cf7178e496545d3727`
 - Original `translator.jar`: `32fec956281a3dcb6cd6895ce7c58308f425766c0bdbe0edd8b420181ff61052`
 - Russian target default v1 `translator.jar`: `3fd5e1ef3c27620fcc577035b9eca1da43eea3e2357d6628048c3ab74eda3259`
 - Russian target default v2 `translator.jar`: `53397351c254817305065cd9d245f9d65ab94f8408a2c9200823ea074defd711`
@@ -93,6 +94,27 @@ Rollback:
 
 - KUAL -> Native Reader Patch -> `Rollback AI Note Patch` restores the original `/opt/amazon/ebook/lib/ReaderSDK-impl.jar`.
 - KUAL -> Native Reader Patch -> `Install Trans + Russian target v3` returns to the stable Trans-only behavior.
+
+Device result: unsafe. Pressing `AI` did not show the chooser and left reader/KUAL UI actions unresponsive until restart. The likely causes are:
+
+- top-level `JOptionPane` / `JDialog` inside Kindle reader's event loop
+- best-effort context extraction via `Book.a(start, 5000)` before the first useful UI/log event
+
+Do not install v1 again.
+
+## AI Note v2
+
+Replaces the add-note action class like v1, but opens an embedded `SelectionDialogCard` through the same `SmartCardDialogImpl.a(SelectionDialogCard, boolean)` path that already works for the visible `Trans` button.
+
+Safety changes from v1:
+
+- no `JOptionPane`
+- no `JDialog`
+- no distant context extraction
+- logs immediately at action entry
+- captures selected text only through `Book.r(start, end)`, with title/authors/language/positions as metadata
+
+The card contains preset buttons: Explain, Translate, Words, Grammar, Short, and a small embedded Custom input. Responses are written into the same embedded card.
 
 ## Translator Russian Target Default v1
 

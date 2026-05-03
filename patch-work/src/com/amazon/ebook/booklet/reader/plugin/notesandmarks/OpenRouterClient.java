@@ -131,6 +131,8 @@ final class OpenRouterClient {
         }
 
         public void jg(String response) {
+            AiAssistantLog.write("OpenRouter response received length="
+                    + (response == null ? 0 : response.length()));
             String text = parseResponse(response);
             if (text == null || text.length() == 0) {
                 callback.onError("Empty response from OpenRouter.");
@@ -140,10 +142,13 @@ final class OpenRouterClient {
         }
 
         public void b(Exception exception) {
+            AiAssistantLog.write("OpenRouter request exception="
+                    + (exception == null ? "network error" : exception.toString()));
             callback.onError(exception == null ? "network error" : exception.toString());
         }
 
         public void abl() {
+            AiAssistantLog.write("OpenRouter request timeout");
             callback.onError("Request timed out. Check Wi-Fi and OpenRouter availability.");
         }
 

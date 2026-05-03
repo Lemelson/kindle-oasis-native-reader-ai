@@ -5,20 +5,13 @@ import com.amazon.ebook.booklet.reader.sdk.ReaderSDK;
 import com.amazon.ebook.booklet.reader.sdk.content.Book;
 import com.amazon.ebook.booklet.reader.sdk.content.BookMetadata;
 import com.amazon.ebook.booklet.reader.sdk.content.Position;
+import com.amazon.ebook.booklet.reader.sdk.ui.SelectionDialog;
+import com.amazon.ebook.booklet.reader.sdk.ui.SelectionDialogCard;
 import com.amazon.ebook.booklet.reader.sdk.ui.element.Element;
-import java.awt.Component;
-import javax.swing.JOptionPane;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 final class AiAssistantController {
-    private static final String[] ACTIONS = {
-        "Explain",
-        "Translate",
-        "Words",
-        "Grammar",
-        "Custom",
-        "Cancel"
-    };
-
     private AiAssistantController() { }
 
     static void open(AnnotationsSelectionDialogProvider provider) {
@@ -30,79 +23,22 @@ final class AiAssistantController {
             return;
         }
 
-        final SelectionData selection = SelectionData.capture(sdk);
-        if (!selection.hasText()) {
-            showMessage(sdk, "No selected text found.");
-            return;
-        }
-
         try {
-            sdk.Jl().HF().bQ(false);
-        } catch (Throwable ignored) {
-            // The AI dialog can still be shown if the selection menu close path changes.
-        }
-
-        final Component parent = getParentComponent(sdk);
-        int choice = JOptionPane.showOptionDialog(
-                parent,
-                "Choose AI prompt for selected text.",
-                "AI",
-                JOptionPane.DEFAULT_OPTION,
-                JOptionPane.PLAIN_MESSAGE,
-                null,
-                ACTIONS,
-                ACTIONS[0]);
-
-        if (choice < 0 || choice >= ACTIONS.length || "Cancel".equals(ACTIONS[choice])) {
-            return;
-        }
-
-        String promptName = ACTIONS[choice];
-        String promptInstruction = presetPrompt(promptName);
-        if ("Custom".equals(promptName)) {
-            Object input = JOptionPane.showInputDialog(
-                    parent,
-                    "Custom request for selected text:",
-                    "AI Custom",
-                    JOptionPane.PLAIN_MESSAGE);
-            if (input == null) {
+            AiAssistantLog.write("ai action start");
+            final SelectionData selection = SelectionData.capture(sdk);
+            AiAssistantLog.write("selection captured length=" + selection.textLength());
+            if (!selection.hasText()) {
+                showMessage(sdk, "No selected text found.");
                 return;
             }
-            promptInstruction = String.valueOf(input).trim();
-            if (promptInstruction.length() == 0) {
-                return;
-            }
+
+            AiAssistantCard card = new AiAssistantCard(sdk, selection);
+            openSmartCard(sdk, card);
+            AiAssistantLog.write("ai card opened");
+        } catch (Throwable t) {
+            AiAssistantLog.write("ai action failed: " + t.toString());
+            showMessage(sdk, "AI failed. Use KUAL rollback if reader acts oddly.");
         }
-
-        OpenRouterConfig config = OpenRouterConfig.load();
-        if (!config.isUsable()) {
-            showMessage(sdk, "OpenRouter config missing. Check /mnt/us/native-reader-research/ai-assistant.properties");
-            return;
-        }
-
-        final AiResponseWindow window = AiResponseWindow.show(
-                sdk,
-                "AI " + promptName,
-                "Sending request to OpenRouter...");
-
-        String userPrompt = buildUserPrompt(promptInstruction, selection);
-        OpenRouterClient.send(sdk, config, userPrompt, new OpenRouterClient.Callback() {
-            public void onSuccess(final String text) {
-                sdk.invokeLater(new Runnable() {
-                    public void run() {
-                        window.setText(text);
-                    }
-                });
-            }
-
-            public void onError(final String message) {
-                sdk.invokeLater(new Runnable() {
-                    public void run() {
-                        window.setText("OpenRouter error:\n" + message);
-                    }
-                });
-            }
-        });
     }
 
     private static ReaderSDK getReaderSDK(AnnotationsSelectionDialogProvider provider) {
@@ -117,23 +53,53 @@ final class AiAssistantController {
         }
     }
 
-    private static Component getParentComponent(ReaderSDK sdk) {
-        try {
-            return sdk.Jl().KM();
-        } catch (Throwable ignored) {
-            return null;
+    private static void openSmartCard(ReaderSDK sdk, SelectionDialogCard card) throws Exception {
+        SelectionDialog dialog = sdk.Jl().HF();
+        Object smartCardDialog = getField(dialog, "bBS");
+        Method compactMode = getMethod(dialog.getClass(), "bN", new Class[] { Boolean.TYPE });
+        Boolean compact = (Boolean) compactMode.invoke(dialog, new Object[] { Boolean.FALSE });
+        Method openCard = smartCardDialog.getClass().getMethod(
+                "a", new Class[] { SelectionDialogCard.class, Boolean.TYPE });
+        openCard.invoke(smartCardDialog, new Object[] { card, compact });
+    }
+
+    private static Object getField(Object target, String name) throws Exception {
+        Class klass = target.getClass();
+        while (klass != null) {
+            try {
+                Field field = klass.getDeclaredField(name);
+                field.setAccessible(true);
+                return field.get(target);
+            } catch (NoSuchFieldException e) {
+                klass = klass.getSuperclass();
+            }
         }
+        throw new NoSuchFieldException(name);
+    }
+
+    private static Method getMethod(Class klass, String name, Class[] parameterTypes) throws Exception {
+        Class current = klass;
+        while (current != null) {
+            try {
+                Method method = current.getDeclaredMethod(name, parameterTypes);
+                method.setAccessible(true);
+                return method;
+            } catch (NoSuchMethodException e) {
+                current = current.getSuperclass();
+            }
+        }
+        throw new NoSuchMethodException(name);
     }
 
     private static void showMessage(ReaderSDK sdk, String message) {
         try {
             sdk.Jl().showMessage(message);
-        } catch (Throwable ignored) {
-            JOptionPane.showMessageDialog(getParentComponent(sdk), message);
+        } catch (Throwable t) {
+            AiAssistantLog.write("showMessage failed: " + t.toString());
         }
     }
 
-    private static String presetPrompt(String promptName) {
+    static String presetPrompt(String promptName) {
         if ("Translate".equals(promptName)) {
             return "Translate the selected text into natural Russian. Preserve meaning, tone, and nuance. "
                     + "If there is an idiom, translate it naturally and add one short note.";
@@ -146,11 +112,14 @@ final class AiAssistantController {
             return "Explain why this English sentence or passage is written this way. Focus on clause "
                     + "structure, tense/aspect, grammar, idioms, and a simpler English paraphrase.";
         }
+        if ("Short".equals(promptName)) {
+            return "Give a very short Russian explanation of the selected text in 2-4 bullet points.";
+        }
         return "Explain the selected text in simple Russian. Start with the core meaning, then mention "
                 + "important nuance, references, difficult words, or ambiguity.";
     }
 
-    private static String buildUserPrompt(String instruction, SelectionData selection) {
+    static String buildUserPrompt(String instruction, SelectionData selection) {
         StringBuffer prompt = new StringBuffer();
         prompt.append("Task:\n");
         prompt.append(instruction);
@@ -189,6 +158,10 @@ final class AiAssistantController {
             return selectedText != null && selectedText.trim().length() > 0;
         }
 
+        int textLength() {
+            return selectedText == null ? 0 : selectedText.length();
+        }
+
         static SelectionData capture(ReaderSDK sdk) {
             SelectionData data = new SelectionData();
             try {
@@ -208,7 +181,7 @@ final class AiAssistantController {
                 if (data.selectedText == null || data.selectedText.length() == 0) {
                     data.selectedText = cleanText(startElement.oT());
                 }
-                data.nearbyText = nearbyText(book, start);
+                data.nearbyText = "";
 
                 BookMetadata metadata = book.mx();
                 if (metadata != null) {
@@ -220,18 +193,6 @@ final class AiAssistantController {
                 AiAssistantLog.write("selection capture failed: " + t.toString());
             }
             return data;
-        }
-
-        private static String nearbyText(Book book, Position start) {
-            try {
-                String text = cleanText(book.a(start, 5000));
-                if (text != null && text.length() > 0) {
-                    return truncate(text, 5000);
-                }
-            } catch (Throwable t) {
-                AiAssistantLog.write("nearby text unavailable: " + t.toString());
-            }
-            return "";
         }
 
         private static String safePosition(Position position) {
