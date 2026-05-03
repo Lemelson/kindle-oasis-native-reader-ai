@@ -25,6 +25,8 @@ reboot
 - Original `Reader-plugin.jar`: `b5d1c9b6e580e89bb70758e42b7f465049e404c97b278b8920ba8e8dc6b0f64b`
 - Patch v1 `Reader-plugin.jar`: `d232b2c407621e79f63b05d39dc08221ee60d6d65c955ad41f60e607232ec62d`
 - Patch v2 `Reader-plugin.jar`: `aa991071fa84ceb5dc097e2f63abc6c1e7f210176fe31bbd9e5d09af70630609`
+- Original `translator.jar`: `32fec956281a3dcb6cd6895ce7c58308f425766c0bdbe0edd8b420181ff61052`
+- Russian target default `translator.jar`: `3fd5e1ef3c27620fcc577035b9eca1da43eea3e2357d6628048c3ab74eda3259`
 
 ## Patch v1
 
@@ -48,7 +50,18 @@ Patch v2 has been built locally and copied to:
 - Mac artifact: `/Users/lemelson/kindle-oasis-jailbreak/native-reader-research/patch-work/patched-v2/Reader-plugin.jar`
 - Kindle USB-visible artifact: `/Volumes/Kindle/native-reader-research/patched/Reader-plugin.v2.jar`
 
-Patch v2 has not yet been installed to `/opt/amazon/ebook/lib/Reader-plugin.jar` because USBNet/SSH is currently not reachable.
+Patch v2 was installed through KUAL and verified on-device: the visible `Trans` button opens the native bottom Translation panel.
+
+## Translator Russian Target Default
+
+Changed `com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage.avp()` in `translator.jar` so a missing saved target language, or a saved `en` target, returns `ru` instead of letting the translator default to English.
+
+This keeps the source-language behavior unchanged. The source can still be detected by the native translator; only the initial target language changes to Russian. If the Kindle has already saved another non-English target language for a given book, the saved value still wins.
+
+Built artifact:
+
+- Mac artifact: `/Users/lemelson/kindle-oasis-jailbreak/native-reader-research/patch-work/patched-translator-ru/translator.jar`
+- Kindle USB-visible artifact: `/Volumes/Kindle/native-reader-research/patched/translator.ru.jar`
 
 ## KUAL installer
 
@@ -57,6 +70,8 @@ Because USBNet was not reachable after the first reboot, a KUAL extension was ad
 - Kindle path: `/mnt/us/extensions/nativepatch/`
 - Menu: `Native Reader Patch`
 - Action: `Install Share->Trans v2`
+- Action: `Install Russian target default`
 - Action: `Rollback Reader Plugin`
+- Action: `Rollback Translator Jar`
 
-The installer applies `Reader-plugin.v2.jar`, stores a pre-v2 backup, writes `/mnt/us/native-reader-research/nativepatch.log`, and reboots. The rollback action restores the original `Reader-plugin.jar.orig.20260504-013002` backup and reboots.
+The installers store pre-change backups, write `/mnt/us/native-reader-research/nativepatch.log`, and reboot. The reader rollback restores the original `Reader-plugin.jar.orig.20260504-013002` backup. The translator rollback restores `/mnt/us/native-reader-research/jars/translator.jar`.

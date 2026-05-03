@@ -11,9 +11,21 @@
           "exitmenu": true
         },
         {
-          "name": "Rollback Reader Plugin",
+          "name": "Install Russian target default",
           "priority": 2,
+          "action": "./bin/install-translator-ru.sh",
+          "exitmenu": true
+        },
+        {
+          "name": "Rollback Reader Plugin",
+          "priority": 3,
           "action": "./bin/rollback.sh",
+          "exitmenu": true
+        },
+        {
+          "name": "Rollback Translator Jar",
+          "priority": 4,
+          "action": "./bin/rollback-translator.sh",
           "exitmenu": true
         }
       ]
