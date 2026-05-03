@@ -26,7 +26,8 @@ reboot
 - Patch v1 `Reader-plugin.jar`: `d232b2c407621e79f63b05d39dc08221ee60d6d65c955ad41f60e607232ec62d`
 - Patch v2 `Reader-plugin.jar`: `aa991071fa84ceb5dc097e2f63abc6c1e7f210176fe31bbd9e5d09af70630609`
 - Original `translator.jar`: `32fec956281a3dcb6cd6895ce7c58308f425766c0bdbe0edd8b420181ff61052`
-- Russian target default `translator.jar`: `3fd5e1ef3c27620fcc577035b9eca1da43eea3e2357d6628048c3ab74eda3259`
+- Russian target default v1 `translator.jar`: `3fd5e1ef3c27620fcc577035b9eca1da43eea3e2357d6628048c3ab74eda3259`
+- Russian target default v2 `translator.jar`: `53397351c254817305065cd9d245f9d65ab94f8408a2c9200823ea074defd711`
 
 ## Patch v1
 
@@ -52,16 +53,30 @@ Patch v2 has been built locally and copied to:
 
 Patch v2 was installed through KUAL and verified on-device: the visible `Trans` button opens the native bottom Translation panel.
 
-## Translator Russian Target Default
+## Translator Russian Target Default v1
 
 Changed `com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage.avp()` in `translator.jar` so a missing saved target language, or a saved `en` target, returns `ru` instead of letting the translator default to English.
 
 This keeps the source-language behavior unchanged. The source can still be detected by the native translator; only the initial target language changes to Russian. If the Kindle has already saved another non-English target language for a given book, the saved value still wins.
 
+Device result: unsafe. This full-class replacement caused Application Error / KPPMainApp crash while opening books. Do not install v1 again.
+
+## Translator Russian Target Default v2
+
+Uses a smaller binary patch against the original Amazon classes instead of replacing `TranslatorStorage`.
+
+Changes:
+
+- `TranslationView.auW()` keeps its original control flow, but the branch that used the current book language as target now reads `default.device.language` from `TranslatorResources`.
+- `TranslatorResources` changes `default.device.language` from `en` to `ru`.
+
+This should preserve English labels and source detection while making the initial target language Russian.
+
 Built artifact:
 
-- Mac artifact: `/Users/lemelson/kindle-oasis-jailbreak/native-reader-research/patch-work/patched-translator-ru/translator.jar`
-- Kindle USB-visible artifact: `/Volumes/Kindle/native-reader-research/patched/translator.ru.jar`
+- v1 Mac artifact: `/Users/lemelson/kindle-oasis-jailbreak/native-reader-research/patch-work/patched-translator-ru/translator.jar`
+- v2 Mac artifact: `/Users/lemelson/kindle-oasis-jailbreak/native-reader-research/patch-work/patched-translator-ru-v2/translator.jar`
+- v2 Kindle USB-visible artifact: `/Volumes/Kindle/native-reader-research/patched/translator.ru.v2.jar`
 
 ## KUAL installer
 
@@ -70,8 +85,9 @@ Because USBNet was not reachable after the first reboot, a KUAL extension was ad
 - Kindle path: `/mnt/us/extensions/nativepatch/`
 - Menu: `Native Reader Patch`
 - Action: `Install Share->Trans v2`
-- Action: `Install Russian target default`
+- Action: `Install Trans + Russian target v2`
+- Action: `Install stable Trans only`
 - Action: `Rollback Reader Plugin`
 - Action: `Rollback Translator Jar`
 
-The installers store pre-change backups, write `/mnt/us/native-reader-research/nativepatch.log`, and reboot. The reader rollback restores the original `Reader-plugin.jar.orig.20260504-013002` backup. The translator rollback restores `/mnt/us/native-reader-research/jars/translator.jar`.
+The installers store pre-change backups, write `/mnt/us/native-reader-research/nativepatch.log`, and reboot. The reader rollback restores the original `Reader-plugin.jar.orig.20260504-013002` backup. The translator rollback restores `/mnt/us/native-reader-research/jars/translator.jar`. `Install stable Trans only` installs the working `Reader-plugin.v2.jar` while restoring the original `translator.jar`.

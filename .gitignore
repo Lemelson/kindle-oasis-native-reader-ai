@@ -1,9 +1,14 @@
 decompiled/
 from-kindle/
 extracted-resources/
+crash-analysis-*/
 patch-work/classes/
+patch-work/classes-*/
 patch-work/patched/
 patch-work/patched-v2/
+patch-work/patched-translator-*/
+patch-work/*.javap.txt
+patch-work/resource-check/
 *.jar
 *.class
 *.err
