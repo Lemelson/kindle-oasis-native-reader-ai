@@ -49,3 +49,14 @@ Patch v2 has been built locally and copied to:
 - Kindle USB-visible artifact: `/Volumes/Kindle/native-reader-research/patched/Reader-plugin.v2.jar`
 
 Patch v2 has not yet been installed to `/opt/amazon/ebook/lib/Reader-plugin.jar` because USBNet/SSH is currently not reachable.
+
+## KUAL installer
+
+Because USBNet was not reachable after the first reboot, a KUAL extension was added:
+
+- Kindle path: `/mnt/us/extensions/nativepatch/`
+- Menu: `Native Reader Patch`
+- Action: `Install Share->Trans v2`
+- Action: `Rollback Reader Plugin`
+
+The installer applies `Reader-plugin.v2.jar`, stores a pre-v2 backup, writes `/mnt/us/native-reader-research/nativepatch.log`, and reboots. The rollback action restores the original `Reader-plugin.jar.orig.20260504-013002` backup and reboots.
