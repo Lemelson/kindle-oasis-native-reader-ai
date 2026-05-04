@@ -29,6 +29,7 @@ reboot
 - AI Note v1 `ReaderSDK-impl.jar`: `3b921ef24f9b0f1c8b61cf5abcbbce620dd30c5a56e38b1308c5e1c9a3912499`
 - AI Note v2 `ReaderSDK-impl.jar`: `b5bb99381b3ef3e86560534a09572ce81e834686d950f8cf7178e496545d3727`
 - AI Note v3 `ReaderSDK-impl.jar`: `99f6a9633784bd37ee31d207c898f12b0b01c3babb7d9cd1bd011e44f3a5bfd6`
+- AI Note v4 `ReaderSDK-impl.jar`: `4d30bceba7a6e1b386d3ac1269e6f7dd308c54b3cf6c10e4c7fcddbad1585092`
 - Original `translator.jar`: `32fec956281a3dcb6cd6895ce7c58308f425766c0bdbe0edd8b420181ff61052`
 - Russian target default v1 `translator.jar`: `3fd5e1ef3c27620fcc577035b9eca1da43eea3e2357d6628048c3ab74eda3259`
 - Russian target default v2 `translator.jar`: `53397351c254817305065cd9d245f9d65ab94f8408a2c9200823ea074defd711`
@@ -159,6 +160,27 @@ End position: ...
 `Explain` asks for a concise Russian explanation focused on the selected fragment, with specific behavior for philosophy, self-help, and fiction.
 
 `Short` asks for a 1-3 sentence Russian explanation without an introduction or long summary.
+
+## AI Note v4
+
+Refines v3:
+
+- output font reduced to 6pt
+- control fonts reduced to 7pt
+- top preset buttons, Custom input, Send button, and Hide button use compact heights
+- output switches from plain `JTextArea` to HTML `JEditorPane`
+- basic Markdown is rendered: `**bold**` and `__bold__` become bold without showing the marker characters; inline backticks become code-style text
+- adds `Hide` next to `Send` to release focus from the Custom field and help close the on-screen keyboard
+- OpenRouter requests are retried once after HTTP/network/timeout/empty-response errors, including 429
+- last prompt, raw response, and final error are saved without API keys:
+  - `/mnt/us/native-reader-research/ai-last-prompt.txt`
+  - `/mnt/us/native-reader-research/ai-last-response.txt`
+  - `/mnt/us/native-reader-research/ai-last-error.txt`
+
+Prompt changes:
+
+- `Explain` now explicitly explains in the context of the specific book and asks the model to infer genre/situation when it is not obvious.
+- `Short` now asks for 3-10 short sentences instead of 1-3.
 
 ## Translator Russian Target Default v1
 

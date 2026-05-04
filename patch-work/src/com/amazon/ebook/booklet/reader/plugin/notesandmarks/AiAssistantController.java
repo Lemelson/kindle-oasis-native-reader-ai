@@ -158,17 +158,21 @@ final class AiAssistantController {
 
     static String presetPrompt(String promptName) {
         if ("Short".equals(promptName)) {
-            return "Explain the selected fragment in Russian in 1-3 short sentences. "
-                    + "No introduction, no long summary. If it is a term, name, reference, or idea, "
-                    + "define it directly. If it is a sentence, say what point it makes.";
+            return "Explain the selected fragment in Russian in the context of this book. "
+                    + "Use 3-10 short sentences. No long introduction. If it is a term, name, "
+                    + "reference, or idea, define it and say why it matters here. If it is a sentence "
+                    + "or argument, restate the point in simpler words.";
         }
-        return "Explain the selected fragment in simple Russian, using the context only to understand "
-                + "what the fragment means. Focus on the selected fragment, not on summarizing the whole "
-                + "context. If this is philosophy, unpack the argument or idea. If this is self-help, "
-                + "translate it into concrete practical meaning. If this is fiction, explain the relevant "
-                + "situation, person, reference, or what the reader is supposed to understand. Keep the "
-                + "answer concise: 4-8 short bullet points or short paragraphs. Mention ambiguity only "
-                + "when it matters.";
+        return "Explain the selected fragment in simple Russian in the context of this specific book. "
+                + "Use the surrounding context and book metadata to infer the genre, situation, speaker, "
+                + "argument, and likely meaning. Focus on the selected fragment, not on summarizing the "
+                + "whole context. If the genre or situation is not obvious, use the most likely reading. "
+                + "If this is philosophy, unpack the argument or idea in simpler words. If this is "
+                + "self-help, translate it into concrete practical meaning. If this is fiction, explain "
+                + "the relevant situation, person, reference, or what the reader is supposed to understand. "
+                + "If it is a term, name, reference, or compact idea, define it and explain why it matters "
+                + "in this passage. Keep the answer concise but sufficient: 4-10 short bullet points or "
+                + "short paragraphs. Mention ambiguity only when it changes the meaning.";
     }
 
     static String buildUserPrompt(String instruction, SelectionData selection) {

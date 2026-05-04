@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 
 final class OpenRouterClient {
+    private static final int MAX_RETRIES = 1;
+
     interface Callback {
         void onSuccess(String text);
         void onError(String message);
@@ -18,6 +20,16 @@ final class OpenRouterClient {
     private OpenRouterClient() { }
 
     static void send(ReaderSDK sdk, OpenRouterConfig config, String userPrompt, Callback callback) {
+        AiAssistantLog.writeLastPrompt(config.model, userPrompt);
+        sendAttempt(sdk, config, userPrompt, callback, 0);
+    }
+
+    private static void sendAttempt(
+            ReaderSDK sdk,
+            OpenRouterConfig config,
+            String userPrompt,
+            Callback callback,
+            int attempt) {
         try {
             Map headers = new HashMap();
             headers.put("Authorization", "Bearer " + config.apiKey);
@@ -27,7 +39,8 @@ final class OpenRouterClient {
             headers.put("X-Title", config.title);
 
             String payload = buildPayload(config, userPrompt);
-            AiAssistantLog.write("sending OpenRouter request model=" + config.model);
+            AiAssistantLog.write("sending OpenRouter request model=" + config.model
+                    + " attempt=" + (attempt + 1));
 
             HttpRequest request = new HttpRequestBuilder()
                     .pA(config.baseUrl)
@@ -37,10 +50,12 @@ final class OpenRouterClient {
                     .hs(0)
                     .fY(false)
                     .fZ(true)
-                    .a(new AiHttpCallback(callback), "KINDLEAPP:com.lab126.reader.AIAssistant");
+                    .a(new AiHttpCallback(sdk, config, userPrompt, callback, attempt),
+                            "KINDLEAPP:com.lab126.reader.AIAssistant");
             request.aKa();
         } catch (Throwable t) {
             AiAssistantLog.write("request setup failed: " + t.toString());
+            AiAssistantLog.writeLastError(t.toString());
             callback.onError(t.toString());
         }
     }
@@ -124,75 +139,123 @@ final class OpenRouterClient {
     }
 
     private static final class AiHttpCallback implements HttpRequestCallback {
+        private final ReaderSDK sdk;
+        private final OpenRouterConfig config;
+        private final String userPrompt;
         private final Callback callback;
+        private final int attempt;
 
-        AiHttpCallback(Callback callback) {
+        AiHttpCallback(
+                ReaderSDK sdk,
+                OpenRouterConfig config,
+                String userPrompt,
+                Callback callback,
+                int attempt) {
+            this.sdk = sdk;
+            this.config = config;
+            this.userPrompt = userPrompt;
             this.callback = callback;
+            this.attempt = attempt;
         }
 
         public void jg(String response) {
             AiAssistantLog.write("OpenRouter response received length="
                     + (response == null ? 0 : response.length()));
-            String text = parseResponse(response);
-            if (text == null || text.length() == 0) {
+            AiAssistantLog.writeLastResponse(response);
+            ResponseResult result = parseResponse(response);
+            if (result.error != null && result.error.length() > 0) {
+                if (retry("OpenRouter response error: " + result.error)) {
+                    return;
+                }
+                AiAssistantLog.writeLastError(result.error);
+                callback.onError(result.error);
+            } else if (result.text == null || result.text.length() == 0) {
+                if (retry("Empty response from OpenRouter.")) {
+                    return;
+                }
+                AiAssistantLog.writeLastError("Empty response from OpenRouter.");
                 callback.onError("Empty response from OpenRouter.");
             } else {
-                callback.onSuccess(text);
+                callback.onSuccess(result.text);
             }
         }
 
         public void b(Exception exception) {
-            AiAssistantLog.write("OpenRouter request exception="
-                    + (exception == null ? "network error" : exception.toString()));
-            callback.onError(exception == null ? "network error" : exception.toString());
+            String message = exception == null ? "network error" : exception.toString();
+            AiAssistantLog.write("OpenRouter request exception=" + message);
+            if (retry(message)) {
+                return;
+            }
+            AiAssistantLog.writeLastError(message);
+            callback.onError(message);
         }
 
         public void abl() {
             AiAssistantLog.write("OpenRouter request timeout");
+            if (retry("Request timed out.")) {
+                return;
+            }
+            AiAssistantLog.writeLastError("Request timed out. Check Wi-Fi and OpenRouter availability.");
             callback.onError("Request timed out. Check Wi-Fi and OpenRouter availability.");
         }
 
         public void aau() {
             AiAssistantLog.write("OpenRouter request retry");
         }
+
+        private boolean retry(String reason) {
+            if (attempt >= MAX_RETRIES) {
+                return false;
+            }
+            AiAssistantLog.write("OpenRouter retrying after: " + reason);
+            sendAttempt(sdk, config, userPrompt, callback, attempt + 1);
+            return true;
+        }
     }
 
-    private static String parseResponse(String response) {
+    private static final class ResponseResult {
+        String text = "";
+        String error = "";
+    }
+
+    private static ResponseResult parseResponse(String response) {
+        ResponseResult result = new ResponseResult();
         try {
             Class jsonValue = Class.forName("org.json.simple.JSONValue");
             Method parse = jsonValue.getMethod("parse", new Class[] { String.class });
             Object root = parse.invoke(null, new Object[] { response });
             if (!(root instanceof Map)) {
-                return "";
+                return result;
             }
             Map map = (Map) root;
             Object error = map.get("error");
             if (error instanceof Map) {
                 Object message = ((Map) error).get("message");
-                return "OpenRouter error: " + String.valueOf(message);
+                result.error = "OpenRouter error: " + String.valueOf(message);
+                return result;
             }
             Object choicesObject = map.get("choices");
             if (!(choicesObject instanceof List) || ((List) choicesObject).isEmpty()) {
-                return "";
+                return result;
             }
             Object choiceObject = ((List) choicesObject).get(0);
             if (!(choiceObject instanceof Map)) {
-                return "";
+                return result;
             }
             Object messageObject = ((Map) choiceObject).get("message");
             if (!(messageObject instanceof Map)) {
-                return "";
+                return result;
             }
             Object content = ((Map) messageObject).get("content");
             if (content instanceof String) {
-                return ((String) content).trim();
-            }
-            if (content != null) {
-                return String.valueOf(content).trim();
+                result.text = ((String) content).trim();
+            } else if (content != null) {
+                result.text = String.valueOf(content).trim();
             }
         } catch (Throwable t) {
             AiAssistantLog.write("response parse failed: " + t.toString());
+            result.error = "Response parse failed: " + t.toString();
         }
-        return "";
+        return result;
     }
 }
