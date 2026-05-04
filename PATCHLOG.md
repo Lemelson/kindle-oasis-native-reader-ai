@@ -197,6 +197,29 @@ Fixes v4 UI oversizing/undersizing problems:
 
 This intentionally drops rich bold rendering because the Kindle reader rendered the HTML markup literally in v4.
 
+## AI Note v6
+
+Refines the working v5 card:
+
+- removes Custom input, Send, and Hide so the Kindle keyboard is not involved
+- shows four preset buttons: `Explain`, `Short`, `Point`, and `Recall`
+- keeps the stable plain `JTextArea` output at 8pt
+- increases controls to 11pt and preset button height to 32px
+- keeps retry and prompt/response/error snapshot logging from v5
+- keeps the context window: about 5000 words before the selected fragment and 3000 words after it, capped at 60000 characters
+
+Prompt changes:
+
+- `Explain` is shorter and no longer enumerates philosophy/self-help/fiction rules inside the preset prompt.
+- A shared wrapper now tells the model to answer in Russian, adapt to the attached context, book metadata, likely genre/situation, selected fragment, and selected mode.
+- `Point` explains what role the selected fragment plays in the argument, scene, or idea.
+- `Recall` explains what background the reader should remember to understand the selected fragment.
+
+Built artifact:
+
+- Mac artifact: `patch-work/patched-ai-v6/ReaderSDK-impl.ai-v6.jar`
+- SHA-256: `903862eb435479f468e29782da580a352d635d65d18782ed6b7e1c1bd9f6f3f3`
+
 ## Translator Russian Target Default v1
 
 Changed `com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage.avp()` in `translator.jar` so a missing saved target language, or a saved `en` target, returns `ru` instead of letting the translator default to English.

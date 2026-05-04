@@ -47,20 +47,26 @@
           "exitmenu": true
         },
         {
-          "name": "Rollback Reader Plugin",
+          "name": "Install AI Note v6",
           "priority": 8,
+          "action": "./bin/install-ai-note-v6.sh",
+          "exitmenu": true
+        },
+        {
+          "name": "Rollback Reader Plugin",
+          "priority": 9,
           "action": "./bin/rollback.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback AI Note Patch",
-          "priority": 9,
+          "priority": 10,
           "action": "./bin/rollback-ai.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback Translator Jar",
-          "priority": 10,
+          "priority": 11,
           "action": "./bin/rollback-translator.sh",
           "exitmenu": true
         }

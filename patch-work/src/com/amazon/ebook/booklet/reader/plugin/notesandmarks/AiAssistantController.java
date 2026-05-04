@@ -158,24 +158,30 @@ final class AiAssistantController {
 
     static String presetPrompt(String promptName) {
         if ("Short".equals(promptName)) {
-            return "Explain the selected fragment in Russian in the context of this book. "
-                    + "Use 3-10 short sentences. No long introduction. If it is a term, name, "
-                    + "reference, or idea, define it and say why it matters here. If it is a sentence "
-                    + "or argument, restate the point in simpler words.";
+            return "Explain the selected fragment in Russian in 3-10 short sentences. "
+                    + "Give the immediate meaning first. If it is a term, name, reference, or idea, "
+                    + "define it and say why it matters here. If it is a sentence or argument, "
+                    + "restate the point in simpler words.";
         }
-        return "Explain the selected fragment in simple Russian in the context of this specific book. "
-                + "Use the surrounding context and book metadata to infer the genre, situation, speaker, "
-                + "argument, and likely meaning. Focus on the selected fragment, not on summarizing the "
-                + "whole context. If the genre or situation is not obvious, use the most likely reading. "
-                + "If this is philosophy, unpack the argument or idea in simpler words. If this is "
-                + "self-help, translate it into concrete practical meaning. If this is fiction, explain "
-                + "the relevant situation, person, reference, or what the reader is supposed to understand. "
-                + "If it is a term, name, reference, or compact idea, define it and explain why it matters "
-                + "in this passage. Keep the answer concise but sufficient: 4-10 short bullet points or "
-                + "short paragraphs. Mention ambiguity only when it changes the meaning.";
+        if ("Point".equals(promptName)) {
+            return "Explain the point of the selected fragment in Russian. "
+                    + "Say what role this fragment plays in the surrounding argument, scene, or idea. "
+                    + "Focus on why it matters, not just what it literally says. If it connects to a "
+                    + "previous idea in the context, mention that connection briefly.";
+        }
+        if ("Recall".equals(promptName)) {
+            return "Explain what I should remember to understand the selected fragment. "
+                    + "If this is a person, concept, event, place, or reference, remind me what it is "
+                    + "and why it matters here. If there is no special background needed, explain the "
+                    + "immediate meaning instead.";
+        }
+        return "Explain the selected fragment in simple Russian. "
+                + "Use the context only to understand the selected fragment, not to summarize the whole context. "
+                + "Restate the meaning in simpler words, explain any important term, reference, or compact idea, "
+                + "and mention ambiguity only when it changes the meaning. Keep the answer concise but sufficient.";
     }
 
-    static String buildUserPrompt(String instruction, SelectionData selection) {
+    static String buildUserPrompt(String modeName, String instruction, SelectionData selection) {
         StringBuffer prompt = new StringBuffer();
         prompt.append("Context window around the selected fragment:\n");
         prompt.append("The Kindle patch tries to include about ");
@@ -197,9 +203,15 @@ final class AiAssistantController {
         prompt.append(selection.selectedText);
         prompt.append("\n</SELECTED_FRAGMENT>\n\n");
 
+        prompt.append("Selected mode: ");
+        prompt.append(modeName);
+        prompt.append("\n\n");
         prompt.append("Task:\n");
         prompt.append(instruction);
-        prompt.append("\n\nAnswer in Russian. Be concise but useful.\n\n");
+        prompt.append("\n\nAnswer in Russian. Be concise but useful. Adapt the answer to the attached context, ");
+        prompt.append("the book metadata, the likely genre and situation, the selected fragment, and the selected mode. ");
+        prompt.append("If the genre or situation is not obvious, use the most likely reading. ");
+        prompt.append("Do not summarize the whole context unless the selected mode requires it; focus on the selected fragment.\n\n");
         prompt.append("Book metadata:\n");
         appendLine(prompt, "Title", selection.title);
         appendLine(prompt, "Authors", selection.authors);
