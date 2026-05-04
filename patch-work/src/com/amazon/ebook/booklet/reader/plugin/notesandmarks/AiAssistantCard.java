@@ -13,20 +13,19 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.JEditorPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
 final class AiAssistantCard extends SelectionDialogCard {
-    private static final int OUTPUT_FONT_SIZE = 6;
-    private static final int CONTROL_FONT_SIZE = 7;
-    private static final int BUTTON_HEIGHT = 14;
-    private static final int INPUT_HEIGHT = 16;
+    private static final int OUTPUT_FONT_SIZE = 8;
+    private static final int CONTROL_FONT_SIZE = 10;
+    private static final int BUTTON_HEIGHT = 24;
+    private static final int INPUT_HEIGHT = 28;
 
     private final ReaderSDK sdk;
     private final AiAssistantController.SelectionData selection;
-    private JEditorPane output;
+    private JTextArea output;
     private JTextArea customInput;
 
     AiAssistantCard(ReaderSDK sdk, AiAssistantController.SelectionData selection) {
@@ -60,12 +59,12 @@ final class AiAssistantCard extends SelectionDialogCard {
     }
 
     private void buildUi() {
-        setLayout(new BorderLayout(3, 3));
+        setLayout(new BorderLayout(4, 4));
         setOpaque(true);
         setBackground(Color.WHITE);
-        setBorder(BorderFactory.createEmptyBorder(3, 4, 3, 4));
+        setBorder(BorderFactory.createEmptyBorder(4, 5, 4, 5));
 
-        JPanel presets = new JPanel(new GridLayout(1, 3, 3, 3));
+        JPanel presets = new JPanel(new GridLayout(1, 3, 4, 4));
         presets.setOpaque(true);
         presets.setBackground(Color.WHITE);
         presets.setPreferredSize(new Dimension(10, BUTTON_HEIGHT));
@@ -74,17 +73,16 @@ final class AiAssistantCard extends SelectionDialogCard {
         addCustomButton(presets);
         add(presets, BorderLayout.NORTH);
 
-        output = new JEditorPane();
-        output.setContentType("text/html");
-        output.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
+        output = new JTextArea("Choose a prompt.");
         output.setEditable(false);
+        output.setLineWrap(true);
+        output.setWrapStyleWord(true);
         output.setFont(new Font("SansSerif", Font.PLAIN, OUTPUT_FONT_SIZE));
         output.setOpaque(true);
         output.setBackground(Color.WHITE);
-        output.setText(toHtml("Choose a prompt."));
         add(new JScrollPane(output), BorderLayout.CENTER);
 
-        JPanel custom = new JPanel(new BorderLayout(3, 3));
+        JPanel custom = new JPanel(new BorderLayout(4, 4));
         custom.setOpaque(true);
         custom.setBackground(Color.WHITE);
         custom.setPreferredSize(new Dimension(10, INPUT_HEIGHT));
@@ -93,17 +91,17 @@ final class AiAssistantCard extends SelectionDialogCard {
         customInput.setLineWrap(true);
         customInput.setWrapStyleWord(true);
         customInput.setFont(new Font("SansSerif", Font.PLAIN, CONTROL_FONT_SIZE));
-        customInput.setMargin(new Insets(0, 2, 0, 2));
+        customInput.setMargin(new Insets(1, 3, 1, 3));
 
         JScrollPane inputScroll = new JScrollPane(customInput);
         inputScroll.setPreferredSize(new Dimension(10, INPUT_HEIGHT));
         inputScroll.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY));
         custom.add(inputScroll, BorderLayout.CENTER);
 
-        JPanel customButtons = new JPanel(new GridLayout(1, 2, 2, 0));
+        JPanel customButtons = new JPanel(new GridLayout(1, 2, 3, 0));
         customButtons.setOpaque(true);
         customButtons.setBackground(Color.WHITE);
-        customButtons.setPreferredSize(new Dimension(58, INPUT_HEIGHT));
+        customButtons.setPreferredSize(new Dimension(78, INPUT_HEIGHT));
 
         JButton send = new JButton("Send");
         compactButton(send);
@@ -160,10 +158,9 @@ final class AiAssistantCard extends SelectionDialogCard {
 
     private void compactButton(JButton button) {
         button.setFont(new Font("SansSerif", Font.PLAIN, CONTROL_FONT_SIZE));
-        button.setMargin(new Insets(0, 2, 0, 2));
+        button.setMargin(new Insets(1, 4, 1, 4));
         button.setPreferredSize(new Dimension(10, BUTTON_HEIGHT));
         button.setMinimumSize(new Dimension(10, BUTTON_HEIGHT));
-        button.setMaximumSize(new Dimension(999, BUTTON_HEIGHT));
     }
 
     private void runPrompt(final String name, String instruction) {
@@ -184,7 +181,7 @@ final class AiAssistantCard extends SelectionDialogCard {
                             + " length=" + (text == null ? 0 : text.length()));
                     sdk.invokeLater(new Runnable() {
                         public void run() {
-                            setOutput(text);
+                            setOutput(stripBasicMarkdown(text));
                         }
                     });
                 }
@@ -216,64 +213,27 @@ final class AiAssistantCard extends SelectionDialogCard {
     }
 
     private void setOutput(String text) {
-        output.setText(toHtml(text == null ? "" : text));
+        output.setText(text == null ? "" : text);
         output.setCaretPosition(0);
         revalidate();
         repaint();
     }
 
-    private static String toHtml(String markdown) {
-        StringBuffer html = new StringBuffer();
-        html.append("<html><body style=\"font-family:SansSerif;font-size:");
-        html.append(OUTPUT_FONT_SIZE);
-        html.append("pt;margin:0;padding:0;color:#000000;\">");
-        html.append(markdownToHtml(markdown));
-        html.append("</body></html>");
-        return html.toString();
-    }
-
-    private static String markdownToHtml(String value) {
+    private static String stripBasicMarkdown(String value) {
         if (value == null) {
             return "";
         }
-        StringBuffer out = new StringBuffer(value.length() + 32);
-        boolean bold = false;
-        boolean code = false;
+        StringBuffer out = new StringBuffer(value.length());
         for (int i = 0; i < value.length(); i++) {
             char c = value.charAt(i);
-            if (c == '`') {
-                out.append(code ? "</code>" : "<code>");
-                code = !code;
-            } else if ((c == '*' || c == '_') && i + 1 < value.length() && value.charAt(i + 1) == c) {
-                out.append(bold ? "</b>" : "<b>");
-                bold = !bold;
+            if ((c == '*' || c == '_') && i + 1 < value.length() && value.charAt(i + 1) == c) {
                 i++;
-            } else if (c == '\n') {
-                out.append("<br>");
+            } else if (c == '`') {
+                // Drop inline code markers, keep the text.
             } else {
-                appendEscaped(out, c);
+                out.append(c);
             }
         }
-        if (code) {
-            out.append("</code>");
-        }
-        if (bold) {
-            out.append("</b>");
-        }
         return out.toString();
-    }
-
-    private static void appendEscaped(StringBuffer out, char c) {
-        if (c == '&') {
-            out.append("&amp;");
-        } else if (c == '<') {
-            out.append("&lt;");
-        } else if (c == '>') {
-            out.append("&gt;");
-        } else if (c == '"') {
-            out.append("&quot;");
-        } else {
-            out.append(c);
-        }
     }
 }

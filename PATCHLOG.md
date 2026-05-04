@@ -30,6 +30,7 @@ reboot
 - AI Note v2 `ReaderSDK-impl.jar`: `b5bb99381b3ef3e86560534a09572ce81e834686d950f8cf7178e496545d3727`
 - AI Note v3 `ReaderSDK-impl.jar`: `99f6a9633784bd37ee31d207c898f12b0b01c3babb7d9cd1bd011e44f3a5bfd6`
 - AI Note v4 `ReaderSDK-impl.jar`: `4d30bceba7a6e1b386d3ac1269e6f7dd308c54b3cf6c10e4c7fcddbad1585092`
+- AI Note v5 `ReaderSDK-impl.jar`: `51f6234fe1e4fbc45e54e96a0734047a95371a308260bc5f2b7aec98d3160bf6`
 - Original `translator.jar`: `32fec956281a3dcb6cd6895ce7c58308f425766c0bdbe0edd8b420181ff61052`
 - Russian target default v1 `translator.jar`: `3fd5e1ef3c27620fcc577035b9eca1da43eea3e2357d6628048c3ab74eda3259`
 - Russian target default v2 `translator.jar`: `53397351c254817305065cd9d245f9d65ab94f8408a2c9200823ea074defd711`
@@ -181,6 +182,20 @@ Prompt changes:
 
 - `Explain` now explicitly explains in the context of the specific book and asks the model to infer genre/situation when it is not obvious.
 - `Short` now asks for 3-10 short sentences instead of 1-3.
+
+## AI Note v5
+
+Fixes v4 UI oversizing/undersizing problems:
+
+- returns output rendering to stable plain `JTextArea`
+- output font is 8pt
+- controls are 10pt
+- buttons are 24px high
+- Custom row is 28px high
+- keeps `Hide`, retry, and prompt/response/error snapshot logging from v4
+- strips basic Markdown markers from model output (`**`, `__`, and backticks) instead of trying to render HTML
+
+This intentionally drops rich bold rendering because the Kindle reader rendered the HTML markup literally in v4.
 
 ## Translator Russian Target Default v1
 
