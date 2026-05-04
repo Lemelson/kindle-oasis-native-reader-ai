@@ -157,68 +157,186 @@ final class AiAssistantController {
     }
 
     static String presetPrompt(String promptName) {
-        if ("Short".equals(promptName)) {
-            return "Explain the selected fragment in Russian in 3-10 short sentences. "
-                    + "Give the immediate meaning first. If it is a term, name, reference, or idea, "
-                    + "define it and say why it matters here. If it is a sentence or argument, "
-                    + "restate the point in simpler words.";
-        }
-        if ("Point".equals(promptName)) {
-            return "Explain the point of the selected fragment in Russian. "
-                    + "Say what role this fragment plays in the surrounding argument, scene, or idea. "
-                    + "Focus on why it matters, not just what it literally says. If it connects to a "
-                    + "previous idea in the context, mention that connection briefly.";
+        if ("Words".equals(promptName)) {
+            return "Reader intention:\n"
+                    + "The wording, idiom, grammar, metaphor, tone, or phrase structure confused me.\n\n"
+                    + "Task:\n"
+                    + "Explain the language of the selected fragment in Russian.\n\n"
+                    + "If the text is in English:\n"
+                    + "- Give a natural Russian paraphrase or translation.\n"
+                    + "- Explain idioms, phrasal verbs, unusual syntax, pronouns, tone, register, irony, "
+                    + "metaphor, or implied meaning when relevant.\n"
+                    + "- Explain only the language features that matter for understanding this fragment.\n\n"
+                    + "If the text is in Russian or another language:\n"
+                    + "- Explain archaic, literary, formal, figurative, or culturally loaded wording.\n"
+                    + "- Explain sentence structure if it blocks understanding.\n\n"
+                    + "Do not summarize the plot or the whole argument.\n\n"
+                    + "Output:\n"
+                    + "Смысл: [natural Russian meaning]\n"
+                    + "Язык: [why the wording means this / what nuance it carries]";
         }
         if ("Recall".equals(promptName)) {
-            return "Explain what I should remember to understand the selected fragment. "
-                    + "If this is a person, concept, event, place, or reference, remind me what it is "
-                    + "and why it matters here. If there is no special background needed, explain the "
-                    + "immediate meaning instead.";
+            return "Reader intention:\n"
+                    + "I need to remember who or what this refers to, or what background is needed.\n\n"
+                    + "Task:\n"
+                    + "Explain what the reader should remember to understand the selected fragment.\n\n"
+                    + "Use BEFORE_CONTEXT first. If the needed information is not present, use safe public "
+                    + "background or book metadata only when helpful.\n\n"
+                    + "For fiction, memoir, narrative biography, mystery, classics, or chronological works:\n"
+                    + "- Remind only what the reader should know at this point.\n"
+                    + "- Do not reveal future role, fate, twist, ending, later scene, or later explanation.\n"
+                    + "- If uncertain whether something has already appeared before this point, say so cautiously.\n\n"
+                    + "For nonfiction, philosophy, history, biography, or essays:\n"
+                    + "- Identify the concept, person, event, school of thought, argument, or reference.\n"
+                    + "- Explain why it matters in this immediate passage.\n\n"
+                    + "If there is no special background to remember, explain the immediate meaning instead.\n\n"
+                    + "Output:\n"
+                    + "Нужно вспомнить: [relevant memory/background]\n"
+                    + "Почему это важно здесь: [why it matters for this fragment]";
         }
-        return "Explain the selected fragment in simple Russian. "
-                + "Use the context only to understand the selected fragment, not to summarize the whole context. "
-                + "Restate the meaning in simpler words, explain any important term, reference, or compact idea, "
-                + "and mention ambiguity only when it changes the meaning. Keep the answer concise but sufficient.";
+        if ("Why".equals(promptName)) {
+            return "Reader intention:\n"
+                    + "I understand the words, but I do not understand why this fragment matters here.\n\n"
+                    + "Task:\n"
+                    + "Explain the function of the selected fragment in the surrounding scene, argument, or idea.\n\n"
+                    + "For fiction, drama, memoir, and classics:\n"
+                    + "- Explain motive, subtext, conflict, emotional shift, relationship, mood, irony, tension, or setup.\n"
+                    + "- If it creates suspense or raises a question, say that without revealing the answer.\n"
+                    + "- Do not reveal future plot.\n\n"
+                    + "For nonfiction, philosophy, history, biography, or essays:\n"
+                    + "- Explain whether the fragment works as a premise, conclusion, objection, example, "
+                    + "definition, contrast, transition, consequence, or key distinction.\n"
+                    + "- Say why the author needs this point here.\n\n"
+                    + "Keep literal summary minimal. Focus on significance.\n\n"
+                    + "Output:\n"
+                    + "Зачем это здесь: [main function]\n"
+                    + "Как это связано с контекстом: [brief connection]";
+        }
+        if ("Deep".equals(promptName)) {
+            return "Reader intention:\n"
+                    + "This fragment feels important, dense, or difficult. I want a deeper explanation.\n\n"
+                    + "Task:\n"
+                    + "Give a deeper explanation of the selected fragment while staying focused on it.\n\n"
+                    + "For philosophy or theory:\n"
+                    + "- Reconstruct the idea step by step.\n"
+                    + "- Define important terms.\n"
+                    + "- Explain the hidden assumption or logical move.\n"
+                    + "- Give a simple example or analogy if useful.\n\n"
+                    + "For literary fiction, classics, or drama:\n"
+                    + "- Explain theme, psychological tension, symbolism, moral conflict, style, or ambiguity.\n"
+                    + "- Do not reveal future plot or later outcomes.\n"
+                    + "- Do not turn the answer into a general essay about the whole book.\n\n"
+                    + "For popular nonfiction, business, history, psychology, or biography:\n"
+                    + "- Explain the concept, stakes, implication, and why it matters.\n"
+                    + "- Use safe external background if helpful, but keep the selected fragment central.\n\n"
+                    + "Output:\n"
+                    + "Главная идея: [core meaning]\n"
+                    + "Глубже: [deeper layer]\n"
+                    + "Пример / зачем это важно: [simple example, implication, or importance]\n\n"
+                    + "Limit: 120-250 Russian words.";
+        }
+        return "Reader intention:\n"
+                + "I do not understand what the selected fragment means.\n\n"
+                + "Task:\n"
+                + "Explain the selected fragment in simple Russian.\n\n"
+                + "Adapt to the text:\n"
+                + "- If it is dialogue, explain what the speaker likely means, the tone, and what is implied.\n"
+                + "- If it is narration, explain what is happening or being described.\n"
+                + "- If it is an argument, restate the claim in simpler words.\n"
+                + "- If it is a concept, reference, metaphor, or compressed idea, briefly define it.\n"
+                + "- If the wording is difficult, briefly clarify it, but do not turn this into a full language lesson.\n\n"
+                + "Output:\n"
+                + "Start with the immediate meaning. Then add one short nuance only if useful. "
+                + "Usually 3-7 short sentences.";
     }
 
     static String buildUserPrompt(String modeName, String instruction, SelectionData selection) {
         StringBuffer prompt = new StringBuffer();
-        prompt.append("Context window around the selected fragment:\n");
-        prompt.append("The Kindle patch tries to include about ");
-        prompt.append(CONTEXT_WORDS_BEFORE);
-        prompt.append(" words before the selected fragment and about ");
-        prompt.append(CONTEXT_WORDS_AFTER);
-        prompt.append(" words after it. The selected fragment is also repeated separately below.\n\n");
-        if (selection.contextText != null && selection.contextText.length() > 0) {
-            prompt.append("<CONTEXT>\n");
-            prompt.append(selection.contextText);
-            prompt.append("\n</CONTEXT>\n\n");
-        } else {
-            prompt.append("<CONTEXT>\n");
-            prompt.append("Context could not be extracted from Kindle; use the selected fragment only.\n");
-            prompt.append("</CONTEXT>\n\n");
-        }
-
-        prompt.append("<SELECTED_FRAGMENT>\n");
-        prompt.append(selection.selectedText);
-        prompt.append("\n</SELECTED_FRAGMENT>\n\n");
-
-        prompt.append("Selected mode: ");
+        prompt.append("<reader_request>\n");
+        prompt.append("Mode: ");
         prompt.append(modeName);
-        prompt.append("\n\n");
-        prompt.append("Task:\n");
-        prompt.append(instruction);
-        prompt.append("\n\nAnswer in Russian. Be concise but useful. Adapt the answer to the attached context, ");
-        prompt.append("the book metadata, the likely genre and situation, the selected fragment, and the selected mode. ");
-        prompt.append("If the genre or situation is not obvious, use the most likely reading. ");
-        prompt.append("Do not summarize the whole context unless the selected mode requires it; focus on the selected fragment.\n\n");
-        prompt.append("Book metadata:\n");
+        prompt.append('\n');
+        prompt.append("Reader intention: ");
+        prompt.append(modeIntention(modeName));
+        prompt.append("\n</reader_request>\n\n");
+
+        prompt.append("<book_metadata>\n");
         appendLine(prompt, "Title", selection.title);
         appendLine(prompt, "Authors", selection.authors);
         appendLine(prompt, "Book language", selection.language);
         appendLine(prompt, "Start position", selection.startPosition);
         appendLine(prompt, "End position", selection.endPosition);
+        prompt.append("Current chapter or section: unknown\n");
+        prompt.append("</book_metadata>\n\n");
+
+        prompt.append("<reader_progress_policy>\n");
+        prompt.append("The user likely has read BEFORE_CONTEXT and SELECTED_FRAGMENT.\n");
+        prompt.append("AFTER_CONTEXT is supplied only for silent disambiguation.\n");
+        prompt.append("In fiction, memoir, biography, mystery, classics, and other chronological or plot-driven texts, ");
+        prompt.append("do not reveal information from AFTER_CONTEXT.\n");
+        prompt.append("</reader_progress_policy>\n\n");
+
+        prompt.append("<before_context>\n");
+        if (selection.beforeContext != null && selection.beforeContext.length() > 0) {
+            prompt.append(selection.beforeContext);
+        } else {
+            prompt.append("BEFORE_CONTEXT could not be extracted from Kindle.");
+        }
+        prompt.append("\n</before_context>\n\n");
+
+        prompt.append("<selected_fragment>\n");
+        prompt.append(selection.selectedText);
+        prompt.append("\n</selected_fragment>\n\n");
+
+        prompt.append("<after_context silent=\"true\">\n");
+        if (selection.afterContext != null && selection.afterContext.length() > 0) {
+            prompt.append(selection.afterContext);
+        } else {
+            prompt.append("AFTER_CONTEXT could not be extracted from Kindle.");
+        }
+        prompt.append("\n</after_context>\n\n");
+
+        prompt.append("<adaptation_rules>\n");
+        prompt.append("Before answering, silently infer:\n");
+        prompt.append("1. the type of text,\n");
+        prompt.append("2. the likely reason the user highlighted this,\n");
+        prompt.append("3. what background is safe and useful,\n");
+        prompt.append("4. how the selected mode should be applied here.\n\n");
+        prompt.append("Use the selected mode as the strongest signal, but adapt to the actual fragment. ");
+        prompt.append("If the mode and fragment suggest different needs, satisfy the selected mode first, ");
+        prompt.append("then briefly cover the other need only if useful.\n");
+        prompt.append("Do not show this analysis.\n");
+        prompt.append("</adaptation_rules>\n\n");
+
+        prompt.append("<mode_instructions>\n");
+        prompt.append(instruction);
+        prompt.append("\n</mode_instructions>\n\n");
+
+        prompt.append("<output_rules>\n");
+        prompt.append("Answer in Russian.\n");
+        prompt.append("Focus on the selected fragment.\n");
+        prompt.append("Start with the direct answer.\n");
+        prompt.append("Do not summarize the whole context unless the mode requires it.\n");
+        prompt.append("For plot-driven or chronological books: no spoilers beyond BEFORE_CONTEXT and SELECTED_FRAGMENT.\n");
+        prompt.append("Keep the answer concise unless Mode is Deep.\n");
+        prompt.append("</output_rules>\n");
         return prompt.toString();
+    }
+
+    private static String modeIntention(String modeName) {
+        if ("Words".equals(modeName)) {
+            return "The wording, idiom, grammar, metaphor, tone, or phrase structure confused me.";
+        }
+        if ("Recall".equals(modeName)) {
+            return "I need to remember who or what this refers to, or what background is needed.";
+        }
+        if ("Why".equals(modeName)) {
+            return "I understand the words, but I do not understand why this fragment matters here.";
+        }
+        if ("Deep".equals(modeName)) {
+            return "This fragment feels important, dense, or difficult. I want a deeper explanation.";
+        }
+        return "I do not understand what the selected fragment means.";
     }
 
     private static void appendLine(StringBuffer prompt, String key, String value) {
@@ -229,7 +347,8 @@ final class AiAssistantController {
 
     static final class SelectionData {
         String selectedText;
-        String contextText;
+        String beforeContext;
+        String afterContext;
         String title;
         String authors;
         String language;
@@ -263,7 +382,8 @@ final class AiAssistantController {
                 if (data.selectedText == null || data.selectedText.length() == 0) {
                     data.selectedText = cleanText(startElement.oT());
                 }
-                data.contextText = contextText(book, start, data.selectedText);
+                data.beforeContext = contextText(book, start, CONTEXT_WORDS_BEFORE, 0, "before");
+                data.afterContext = contextText(book, end, 0, CONTEXT_WORDS_AFTER, "after");
 
                 BookMetadata metadata = book.mx();
                 if (metadata != null) {
@@ -277,13 +397,19 @@ final class AiAssistantController {
             return data;
         }
 
-        private static String contextText(Book book, Position start, String selectedText) {
+        private static String contextText(
+                Book book,
+                Position anchor,
+                int wordsBefore,
+                int wordsAfter,
+                String label) {
             WordIterator iterator = null;
             try {
-                AiAssistantLog.write("context extraction start");
-                iterator = book.a(start, CONTEXT_WORDS_BEFORE, CONTEXT_WORDS_AFTER, true);
+                AiAssistantLog.write("context extraction start label=" + label
+                        + " before=" + wordsBefore + " after=" + wordsAfter);
+                iterator = book.a(anchor, wordsBefore, wordsAfter, true);
                 if (iterator == null) {
-                    AiAssistantLog.write("context iterator null");
+                    AiAssistantLog.write("context iterator null label=" + label);
                     return "";
                 }
                 try {
@@ -294,7 +420,7 @@ final class AiAssistantController {
 
                 StringBuffer out = new StringBuffer();
                 int words = 0;
-                int wordLimit = CONTEXT_WORDS_BEFORE + CONTEXT_WORDS_AFTER + 500;
+                int wordLimit = wordsBefore + wordsAfter + 500;
                 while (words < wordLimit && out.length() < CONTEXT_MAX_CHARS && iterator.hasNext()) {
                     WordEntry entry = iterator.sz();
                     appendWord(out, entry);
@@ -302,14 +428,11 @@ final class AiAssistantController {
                 }
 
                 String context = cleanContext(out.toString());
-                if (context.length() == 0) {
-                    context = selectedText == null ? "" : selectedText;
-                }
-                AiAssistantLog.write("context extraction done words=" + words
+                AiAssistantLog.write("context extraction done label=" + label + " words=" + words
                         + " length=" + context.length());
                 return context;
             } catch (Throwable t) {
-                AiAssistantLog.write("context extraction failed: " + t.toString());
+                AiAssistantLog.write("context extraction failed label=" + label + ": " + t.toString());
                 return "";
             } finally {
                 if (iterator != null) {

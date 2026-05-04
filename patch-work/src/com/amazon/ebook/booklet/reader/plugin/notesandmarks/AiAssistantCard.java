@@ -68,14 +68,15 @@ final class AiAssistantCard extends SelectionDialogCard {
         setBackground(Color.WHITE);
         setBorder(BorderFactory.createEmptyBorder(4, 5, 4, 5));
 
-        JPanel presets = new JPanel(new GridLayout(1, 4, 4, 4));
+        JPanel presets = new JPanel(new GridLayout(1, 5, 4, 4));
         presets.setOpaque(true);
         presets.setBackground(Color.WHITE);
         presets.setPreferredSize(new Dimension(10, BUTTON_HEIGHT));
         addPreset(presets, "Explain");
-        addPreset(presets, "Short");
-        addPreset(presets, "Point");
+        addPreset(presets, "Words");
         addPreset(presets, "Recall");
+        addPreset(presets, "Why");
+        addPreset(presets, "Deep");
         add(presets, BorderLayout.NORTH);
 
         output = new JTextArea("Choose a prompt.");

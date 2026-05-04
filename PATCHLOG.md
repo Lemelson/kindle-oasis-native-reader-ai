@@ -237,6 +237,25 @@ Built artifact:
 - Mac artifact: `patch-work/patched-ai-v7/ReaderSDK-impl.ai-v7.jar`
 - SHA-256: `8ea1c783be16812f1ff323ade5b804ec3a58bcf654164a326a54117717f06791`
 
+## AI Note v8
+
+Refines v7 into a universal reading-intention assistant:
+
+- replaces `Short` and `Point` with five modes: `Explain`, `Words`, `Recall`, `Why`, and `Deep`
+- keeps the v7 button sizing, per-mode cache, retry behavior, and plain 8pt output rendering
+- upgrades the OpenRouter system prompt into a spoiler-safe Kindle reading assistant prompt
+- changes the user prompt from one generic `<CONTEXT>` block to separate `<before_context>`, `<selected_fragment>`, and `<after_context silent="true">` blocks
+- treats `before_context` as already read and `after_context` as silent disambiguation only
+- adds explicit reader progress, adaptation, mode instruction, and output rule blocks
+- keeps model fallback disabled in the OpenRouter payload
+
+The context extractor now attempts to fetch about 5000 words before the selected fragment and about 3000 words after it as separate blocks. If either side fails, the prompt still includes the selected fragment and marks that side as unavailable.
+
+Built artifact:
+
+- Mac artifact: `patch-work/patched-ai-v8/ReaderSDK-impl.ai-v8.jar`
+- SHA-256: `cb3cf0e864f3fe8ad8a257265de2b39e439382f6757b9cfe5fad384336f3e72d`
+
 ## Translator Russian Target Default v1
 
 Changed `com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage.avp()` in `translator.jar` so a missing saved target language, or a saved `en` target, returns `ru` instead of letting the translator default to English.
