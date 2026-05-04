@@ -10,6 +10,8 @@ import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.HashMap;
+import java.util.Map;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JPanel;
@@ -18,12 +20,17 @@ import javax.swing.JTextArea;
 
 final class AiAssistantCard extends SelectionDialogCard {
     private static final int OUTPUT_FONT_SIZE = 8;
-    private static final int CONTROL_FONT_SIZE = 11;
-    private static final int BUTTON_HEIGHT = 32;
+    private static final int CONTROL_FONT_SIZE = 12;
+    private static final int BUTTON_HEIGHT = 48;
 
     private final ReaderSDK sdk;
     private final AiAssistantController.SelectionData selection;
+    private final Map cachedResponses = new HashMap();
+    private final Map statusTexts = new HashMap();
+    private final Map requestIds = new HashMap();
     private JTextArea output;
+    private String activeMode = "";
+    private int requestSerial = 0;
 
     AiAssistantCard(ReaderSDK sdk, AiAssistantController.SelectionData selection) {
         this.sdk = sdk;
@@ -86,7 +93,7 @@ final class AiAssistantCard extends SelectionDialogCard {
         compactButton(button);
         button.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) {
-                runPrompt(name, AiAssistantController.presetPrompt(name));
+                selectPreset(name);
             }
         });
         panel.add(button);
@@ -99,24 +106,62 @@ final class AiAssistantCard extends SelectionDialogCard {
         button.setMinimumSize(new Dimension(10, BUTTON_HEIGHT));
     }
 
+    private void selectPreset(String name) {
+        boolean sameMode = name.equals(activeMode);
+        activeMode = name;
+        if (!sameMode) {
+            String cached = (String) cachedResponses.get(name);
+            if (cached != null) {
+                setOutput(cached);
+                return;
+            }
+
+            String status = (String) statusTexts.get(name);
+            if (status != null) {
+                setOutput(status);
+                return;
+            }
+        }
+
+        runPrompt(name, AiAssistantController.presetPrompt(name));
+    }
+
     private void runPrompt(final String name, String instruction) {
+        final int requestId = nextRequestId(name);
         try {
             AiAssistantLog.write("prompt start name=" + name);
             OpenRouterConfig config = OpenRouterConfig.load();
             if (!config.isUsable()) {
-                setOutput("OpenRouter config missing.\nCheck /mnt/us/native-reader-research/ai-assistant.properties");
+                updateStatus(name, requestId,
+                        "OpenRouter config missing.\nCheck /mnt/us/native-reader-research/ai-assistant.properties");
                 return;
             }
 
-            setOutput("Sending request to OpenRouter...");
+            updateStatus(name, requestId, "OpenRouter request: attempt 1.");
             String userPrompt = AiAssistantController.buildUserPrompt(name, instruction, selection);
             OpenRouterClient.send(sdk, config, userPrompt, new OpenRouterClient.Callback() {
+                public void onStatus(final String message) {
+                    sdk.invokeLater(new Runnable() {
+                        public void run() {
+                            updateStatus(name, requestId, message);
+                        }
+                    });
+                }
+
                 public void onSuccess(final String text) {
                     AiAssistantLog.write("prompt success name=" + name
                             + " length=" + (text == null ? 0 : text.length()));
                     sdk.invokeLater(new Runnable() {
                         public void run() {
-                            setOutput(stripBasicMarkdown(text));
+                            if (!isLatestRequest(name, requestId)) {
+                                return;
+                            }
+                            String clean = stripBasicMarkdown(text);
+                            cachedResponses.put(name, clean);
+                            statusTexts.remove(name);
+                            if (name.equals(activeMode)) {
+                                setOutput(clean);
+                            }
                         }
                     });
                 }
@@ -125,14 +170,38 @@ final class AiAssistantCard extends SelectionDialogCard {
                     AiAssistantLog.write("prompt error name=" + name + " message=" + message);
                     sdk.invokeLater(new Runnable() {
                         public void run() {
-                            setOutput("OpenRouter error:\n" + message);
+                            updateStatus(name, requestId, "OpenRouter error after retries:\n" + message);
                         }
                     });
                 }
             });
         } catch (Throwable t) {
             AiAssistantLog.write("prompt failed name=" + name + " error=" + t.toString());
-            setOutput("AI failed:\n" + t.toString());
+            updateStatus(name, requestId, "AI failed:\n" + t.toString());
+        }
+    }
+
+    private int nextRequestId(String name) {
+        requestSerial++;
+        Integer id = new Integer(requestSerial);
+        requestIds.put(name, id);
+        cachedResponses.remove(name);
+        return id.intValue();
+    }
+
+    private boolean isLatestRequest(String name, int requestId) {
+        Integer latest = (Integer) requestIds.get(name);
+        return latest != null && latest.intValue() == requestId;
+    }
+
+    private void updateStatus(String name, int requestId, String message) {
+        if (!isLatestRequest(name, requestId)) {
+            return;
+        }
+        String text = String.valueOf(message);
+        statusTexts.put(name, text);
+        if (name.equals(activeMode)) {
+            setOutput(text);
         }
     }
 

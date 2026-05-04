@@ -10,9 +10,13 @@ import java.util.List;
 import java.util.Map;
 
 final class OpenRouterClient {
-    private static final int MAX_RETRIES = 1;
+    private static final int MAX_ATTEMPTS = 6;
+    private static final long[] RETRY_DELAYS_MS = new long[] {
+            500L, 500L, 500L, 2000L, 5000L
+    };
 
     interface Callback {
+        void onStatus(String message);
         void onSuccess(String text);
         void onError(String message);
     }
@@ -41,6 +45,8 @@ final class OpenRouterClient {
             String payload = buildPayload(config, userPrompt);
             AiAssistantLog.write("sending OpenRouter request model=" + config.model
                     + " attempt=" + (attempt + 1));
+            callback.onStatus("OpenRouter request: attempt " + (attempt + 1)
+                    + "/" + MAX_ATTEMPTS + ".");
 
             HttpRequest request = new HttpRequestBuilder()
                     .pA(config.baseUrl)
@@ -55,6 +61,9 @@ final class OpenRouterClient {
             request.aKa();
         } catch (Throwable t) {
             AiAssistantLog.write("request setup failed: " + t.toString());
+            if (scheduleRetry(sdk, config, userPrompt, callback, attempt, t.toString())) {
+                return;
+            }
             AiAssistantLog.writeLastError(t.toString());
             callback.onError(t.toString());
         }
@@ -138,6 +147,63 @@ final class OpenRouterClient {
         return out.toString();
     }
 
+    private static boolean scheduleRetry(
+            final ReaderSDK sdk,
+            final OpenRouterConfig config,
+            final String userPrompt,
+            final Callback callback,
+            final int attempt,
+            String reason) {
+        if (attempt + 1 >= MAX_ATTEMPTS) {
+            return false;
+        }
+
+        final int nextAttempt = attempt + 1;
+        final long delayMs = RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)];
+        String status = "Attempt " + (attempt + 1) + "/" + MAX_ATTEMPTS
+                + " failed: " + shortReason(reason) + "\nRetry " + (nextAttempt + 1)
+                + "/" + MAX_ATTEMPTS + " in " + formatDelay(delayMs) + ".";
+        AiAssistantLog.write("OpenRouter retrying after attempt " + (attempt + 1)
+                + ": " + shortReason(reason));
+        callback.onStatus(status);
+
+        Thread retryThread = new Thread(new Runnable() {
+            public void run() {
+                try {
+                    Thread.sleep(delayMs);
+                } catch (InterruptedException ignored) {
+                    // Continue with the retry.
+                }
+                sendAttempt(sdk, config, userPrompt, callback, nextAttempt);
+            }
+        }, "AIAssistantOpenRouterRetry");
+        try {
+            retryThread.setDaemon(true);
+        } catch (Throwable ignored) {
+            // Some Kindle runtimes may not care about daemon status.
+        }
+        retryThread.start();
+        return true;
+    }
+
+    private static String formatDelay(long delayMs) {
+        if (delayMs == 500L) {
+            return "0.5s";
+        }
+        return String.valueOf(delayMs / 1000L) + "s";
+    }
+
+    private static String shortReason(String reason) {
+        if (reason == null || reason.length() == 0) {
+            return "unknown error";
+        }
+        String clean = reason.replace('\n', ' ').replace('\r', ' ').trim();
+        if (clean.length() > 140) {
+            return clean.substring(0, 140) + "...";
+        }
+        return clean;
+    }
+
     private static final class AiHttpCallback implements HttpRequestCallback {
         private final ReaderSDK sdk;
         private final OpenRouterConfig config;
@@ -204,12 +270,7 @@ final class OpenRouterClient {
         }
 
         private boolean retry(String reason) {
-            if (attempt >= MAX_RETRIES) {
-                return false;
-            }
-            AiAssistantLog.write("OpenRouter retrying after: " + reason);
-            sendAttempt(sdk, config, userPrompt, callback, attempt + 1);
-            return true;
+            return scheduleRetry(sdk, config, userPrompt, callback, attempt, reason);
         }
     }
 

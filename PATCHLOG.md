@@ -220,6 +220,23 @@ Built artifact:
 - Mac artifact: `patch-work/patched-ai-v6/ReaderSDK-impl.ai-v6.jar`
 - SHA-256: `903862eb435479f468e29782da580a352d635d65d18782ed6b7e1c1bd9f6f3f3`
 
+## AI Note v7
+
+Refines v6:
+
+- increases preset button height from 32px to 48px and control font from 11pt to 12pt
+- keeps output text at 8pt
+- adds per-mode cached answers inside the currently open AI card
+- switching from one generated mode to another generated mode shows the existing answer instead of sending a new request
+- tapping the already active mode sends a fresh request and replaces that mode's cached answer
+- OpenRouter requests now use up to 6 attempts: first immediately, then retries after 0.5s, 0.5s, 0.5s, 2s, and 5s
+- the AI card shows compact attempt/retry status text and only shows the final error after all retry attempts fail
+
+Built artifact:
+
+- Mac artifact: `patch-work/patched-ai-v7/ReaderSDK-impl.ai-v7.jar`
+- SHA-256: `8ea1c783be16812f1ff323ade5b804ec3a58bcf654164a326a54117717f06791`
+
 ## Translator Russian Target Default v1
 
 Changed `com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage.avp()` in `translator.jar` so a missing saved target language, or a saved `en` target, returns `ru` instead of letting the translator default to English.
