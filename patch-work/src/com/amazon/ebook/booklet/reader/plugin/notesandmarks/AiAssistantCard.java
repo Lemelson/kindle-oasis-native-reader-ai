@@ -6,6 +6,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.KeyboardFocusManager;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.BorderFactory;
@@ -51,18 +52,15 @@ final class AiAssistantCard extends SelectionDialogCard {
     }
 
     private void buildUi() {
-        setLayout(new BorderLayout(8, 8));
+        setLayout(new BorderLayout(5, 5));
         setOpaque(true);
         setBackground(Color.WHITE);
-        setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        setBorder(BorderFactory.createEmptyBorder(5, 6, 5, 6));
 
-        JPanel presets = new JPanel(new GridLayout(2, 3, 8, 8));
+        JPanel presets = new JPanel(new GridLayout(1, 3, 5, 5));
         presets.setOpaque(true);
         presets.setBackground(Color.WHITE);
         addPreset(presets, "Explain");
-        addPreset(presets, "Translate");
-        addPreset(presets, "Words");
-        addPreset(presets, "Grammar");
         addPreset(presets, "Short");
         addCustomButton(presets);
         add(presets, BorderLayout.NORTH);
@@ -71,21 +69,22 @@ final class AiAssistantCard extends SelectionDialogCard {
         output.setEditable(false);
         output.setLineWrap(true);
         output.setWrapStyleWord(true);
-        output.setFont(new Font("SansSerif", Font.PLAIN, 18));
+        output.setFont(new Font("SansSerif", Font.PLAIN, 12));
         output.setOpaque(true);
         output.setBackground(Color.WHITE);
         add(new JScrollPane(output), BorderLayout.CENTER);
 
-        JPanel custom = new JPanel(new BorderLayout(6, 6));
+        JPanel custom = new JPanel(new BorderLayout(4, 4));
         custom.setOpaque(true);
         custom.setBackground(Color.WHITE);
-        customInput = new JTextArea(2, 20);
+        customInput = new JTextArea(1, 20);
         customInput.setLineWrap(true);
         customInput.setWrapStyleWord(true);
-        customInput.setFont(new Font("SansSerif", Font.PLAIN, 17));
+        customInput.setFont(new Font("SansSerif", Font.PLAIN, 12));
         custom.add(new JScrollPane(customInput), BorderLayout.CENTER);
 
         JButton send = new JButton("Send");
+        send.setFont(new Font("SansSerif", Font.PLAIN, 12));
         send.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) {
                 String text = customInput.getText();
@@ -105,6 +104,7 @@ final class AiAssistantCard extends SelectionDialogCard {
 
     private void addPreset(JPanel panel, final String name) {
         JButton button = new JButton(name);
+        button.setFont(new Font("SansSerif", Font.PLAIN, 12));
         button.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) {
                 runPrompt(name, AiAssistantController.presetPrompt(name));
@@ -115,6 +115,7 @@ final class AiAssistantCard extends SelectionDialogCard {
 
     private void addCustomButton(JPanel panel) {
         JButton button = new JButton("Custom");
+        button.setFont(new Font("SansSerif", Font.PLAIN, 12));
         button.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) {
                 customInput.requestFocus();
@@ -127,6 +128,7 @@ final class AiAssistantCard extends SelectionDialogCard {
     private void runPrompt(final String name, String instruction) {
         try {
             AiAssistantLog.write("prompt start name=" + name);
+            releaseCustomInputFocus();
             OpenRouterConfig config = OpenRouterConfig.load();
             if (!config.isUsable()) {
                 setOutput("OpenRouter config missing.\nCheck /mnt/us/native-reader-research/ai-assistant.properties");
@@ -158,6 +160,17 @@ final class AiAssistantCard extends SelectionDialogCard {
         } catch (Throwable t) {
             AiAssistantLog.write("prompt failed name=" + name + " error=" + t.toString());
             setOutput("AI failed:\n" + t.toString());
+        }
+    }
+
+    private void releaseCustomInputFocus() {
+        try {
+            customInput.setFocusable(false);
+            KeyboardFocusManager.getCurrentKeyboardFocusManager().clearGlobalFocusOwner();
+            output.requestFocusInWindow();
+            customInput.setFocusable(true);
+        } catch (Throwable t) {
+            AiAssistantLog.write("focus release skipped: " + t.toString());
         }
     }
 

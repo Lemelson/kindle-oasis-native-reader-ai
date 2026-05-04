@@ -28,6 +28,7 @@ reboot
 - Patch v3 `Reader-plugin.jar`: `d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907`
 - AI Note v1 `ReaderSDK-impl.jar`: `3b921ef24f9b0f1c8b61cf5abcbbce620dd30c5a56e38b1308c5e1c9a3912499`
 - AI Note v2 `ReaderSDK-impl.jar`: `b5bb99381b3ef3e86560534a09572ce81e834686d950f8cf7178e496545d3727`
+- AI Note v3 `ReaderSDK-impl.jar`: `99f6a9633784bd37ee31d207c898f12b0b01c3babb7d9cd1bd011e44f3a5bfd6`
 - Original `translator.jar`: `32fec956281a3dcb6cd6895ce7c58308f425766c0bdbe0edd8b420181ff61052`
 - Russian target default v1 `translator.jar`: `3fd5e1ef3c27620fcc577035b9eca1da43eea3e2357d6628048c3ab74eda3259`
 - Russian target default v2 `translator.jar`: `53397351c254817305065cd9d245f9d65ab94f8408a2c9200823ea074defd711`
@@ -115,6 +116,49 @@ Safety changes from v1:
 - captures selected text only through `Book.r(start, end)`, with title/authors/language/positions as metadata
 
 The card contains preset buttons: Explain, Translate, Words, Grammar, Short, and a small embedded Custom input. Responses are written into the same embedded card.
+
+## AI Note v3
+
+Refines the working v2 card:
+
+- keeps only `Explain`, `Short`, and `Custom`
+- removes `Translate`, `Words`, and `Grammar`
+- reduces output/input/button fonts to 12pt
+- changes Custom input to a single compact row
+- tries to release focus from Custom input before sending, so the on-screen keyboard is more likely to disappear
+- tries to enlarge the smart-card dialog height by 1.5x through reflection; if the Kindle dialog API refuses this, the resize is skipped and logged
+- adds a large best-effort context window: about 5000 words before the selected fragment and 3000 words after it, capped at 60000 characters
+
+Prompt shape:
+
+```text
+Context window around the selected fragment:
+The Kindle patch tries to include about 5000 words before the selected fragment and about 3000 words after it. The selected fragment is also repeated separately below.
+
+<CONTEXT>
+...
+</CONTEXT>
+
+<SELECTED_FRAGMENT>
+...
+</SELECTED_FRAGMENT>
+
+Task:
+...
+
+Answer in Russian. Be concise but useful.
+
+Book metadata:
+Title: ...
+Authors: ...
+Book language: ...
+Start position: ...
+End position: ...
+```
+
+`Explain` asks for a concise Russian explanation focused on the selected fragment, with specific behavior for philosophy, self-help, and fiction.
+
+`Short` asks for a 1-3 sentence Russian explanation without an introduction or long summary.
 
 ## Translator Russian Target Default v1
 

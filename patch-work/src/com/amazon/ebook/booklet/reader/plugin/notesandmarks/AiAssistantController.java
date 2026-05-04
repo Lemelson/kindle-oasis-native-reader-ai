@@ -5,13 +5,23 @@ import com.amazon.ebook.booklet.reader.sdk.ReaderSDK;
 import com.amazon.ebook.booklet.reader.sdk.content.Book;
 import com.amazon.ebook.booklet.reader.sdk.content.BookMetadata;
 import com.amazon.ebook.booklet.reader.sdk.content.Position;
+import com.amazon.ebook.booklet.reader.sdk.content.WordEntry;
+import com.amazon.ebook.booklet.reader.sdk.content.WordIterator;
 import com.amazon.ebook.booklet.reader.sdk.ui.SelectionDialog;
 import com.amazon.ebook.booklet.reader.sdk.ui.SelectionDialogCard;
 import com.amazon.ebook.booklet.reader.sdk.ui.element.Element;
+import java.awt.Dimension;
+import java.awt.Rectangle;
+import java.awt.Toolkit;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 final class AiAssistantController {
+    private static final int CONTEXT_WORDS_BEFORE = 5000;
+    private static final int CONTEXT_WORDS_AFTER = 3000;
+    private static final int CONTEXT_MAX_CHARS = 60000;
+    private static final int CONTEXT_ITERATOR_TIMEOUT_MS = 2500;
+
     private AiAssistantController() { }
 
     static void open(AnnotationsSelectionDialogProvider provider) {
@@ -61,6 +71,53 @@ final class AiAssistantController {
         Method openCard = smartCardDialog.getClass().getMethod(
                 "a", new Class[] { SelectionDialogCard.class, Boolean.TYPE });
         openCard.invoke(smartCardDialog, new Object[] { card, compact });
+        enlargeSmartCard(smartCardDialog);
+    }
+
+    private static void enlargeSmartCard(Object smartCardDialog) {
+        try {
+            Rectangle bounds = getDialogBounds(smartCardDialog);
+            if (bounds == null) {
+                Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+                bounds = new Rectangle(
+                        screen.width / 24,
+                        screen.height / 2,
+                        screen.width - (screen.width / 12),
+                        screen.height / 3);
+            }
+
+            int extraHeight = Math.max(40, bounds.height / 2);
+            Rectangle larger = new Rectangle(
+                    bounds.x,
+                    Math.max(0, bounds.y - extraHeight),
+                    bounds.width,
+                    bounds.height + extraHeight);
+
+            Method setBounds = getMethod(
+                    smartCardDialog.getClass(), "setDialogBounds", new Class[] { Rectangle.class });
+            setBounds.invoke(smartCardDialog, new Object[] { larger });
+            try {
+                smartCardDialog.getClass().getMethod("validate", new Class[0])
+                        .invoke(smartCardDialog, new Object[0]);
+            } catch (Throwable ignored) {
+                // Dialog resizing should not be able to break the AI card.
+            }
+        } catch (Throwable t) {
+            AiAssistantLog.write("smart card resize skipped: " + t.toString());
+        }
+    }
+
+    private static Rectangle getDialogBounds(Object smartCardDialog) {
+        try {
+            Method method = getMethod(smartCardDialog.getClass(), "getDialogBounds", new Class[0]);
+            Object value = method.invoke(smartCardDialog, new Object[0]);
+            if (value instanceof Rectangle) {
+                return new Rectangle((Rectangle) value);
+            }
+        } catch (Throwable ignored) {
+            // Some KDialog builds do not expose getDialogBounds.
+        }
+        return null;
     }
 
     private static Object getField(Object target, String name) throws Exception {
@@ -100,27 +157,42 @@ final class AiAssistantController {
     }
 
     static String presetPrompt(String promptName) {
-        if ("Translate".equals(promptName)) {
-            return "Translate the selected text into natural Russian. Preserve meaning, tone, and nuance. "
-                    + "If there is an idiom, translate it naturally and add one short note.";
-        }
-        if ("Words".equals(promptName)) {
-            return "For a Russian-speaking English learner, explain the key vocabulary, idioms, "
-                    + "phrasal verbs, and difficult references in the selected text.";
-        }
-        if ("Grammar".equals(promptName)) {
-            return "Explain why this English sentence or passage is written this way. Focus on clause "
-                    + "structure, tense/aspect, grammar, idioms, and a simpler English paraphrase.";
-        }
         if ("Short".equals(promptName)) {
-            return "Give a very short Russian explanation of the selected text in 2-4 bullet points.";
+            return "Explain the selected fragment in Russian in 1-3 short sentences. "
+                    + "No introduction, no long summary. If it is a term, name, reference, or idea, "
+                    + "define it directly. If it is a sentence, say what point it makes.";
         }
-        return "Explain the selected text in simple Russian. Start with the core meaning, then mention "
-                + "important nuance, references, difficult words, or ambiguity.";
+        return "Explain the selected fragment in simple Russian, using the context only to understand "
+                + "what the fragment means. Focus on the selected fragment, not on summarizing the whole "
+                + "context. If this is philosophy, unpack the argument or idea. If this is self-help, "
+                + "translate it into concrete practical meaning. If this is fiction, explain the relevant "
+                + "situation, person, reference, or what the reader is supposed to understand. Keep the "
+                + "answer concise: 4-8 short bullet points or short paragraphs. Mention ambiguity only "
+                + "when it matters.";
     }
 
     static String buildUserPrompt(String instruction, SelectionData selection) {
         StringBuffer prompt = new StringBuffer();
+        prompt.append("Context window around the selected fragment:\n");
+        prompt.append("The Kindle patch tries to include about ");
+        prompt.append(CONTEXT_WORDS_BEFORE);
+        prompt.append(" words before the selected fragment and about ");
+        prompt.append(CONTEXT_WORDS_AFTER);
+        prompt.append(" words after it. The selected fragment is also repeated separately below.\n\n");
+        if (selection.contextText != null && selection.contextText.length() > 0) {
+            prompt.append("<CONTEXT>\n");
+            prompt.append(selection.contextText);
+            prompt.append("\n</CONTEXT>\n\n");
+        } else {
+            prompt.append("<CONTEXT>\n");
+            prompt.append("Context could not be extracted from Kindle; use the selected fragment only.\n");
+            prompt.append("</CONTEXT>\n\n");
+        }
+
+        prompt.append("<SELECTED_FRAGMENT>\n");
+        prompt.append(selection.selectedText);
+        prompt.append("\n</SELECTED_FRAGMENT>\n\n");
+
         prompt.append("Task:\n");
         prompt.append(instruction);
         prompt.append("\n\nAnswer in Russian. Be concise but useful.\n\n");
@@ -130,12 +202,6 @@ final class AiAssistantController {
         appendLine(prompt, "Book language", selection.language);
         appendLine(prompt, "Start position", selection.startPosition);
         appendLine(prompt, "End position", selection.endPosition);
-        prompt.append("\nSelected text:\n");
-        prompt.append(selection.selectedText);
-        if (selection.nearbyText != null && selection.nearbyText.length() > 0) {
-            prompt.append("\n\nNearby text, if useful:\n");
-            prompt.append(selection.nearbyText);
-        }
         return prompt.toString();
     }
 
@@ -147,7 +213,7 @@ final class AiAssistantController {
 
     static final class SelectionData {
         String selectedText;
-        String nearbyText;
+        String contextText;
         String title;
         String authors;
         String language;
@@ -181,7 +247,7 @@ final class AiAssistantController {
                 if (data.selectedText == null || data.selectedText.length() == 0) {
                     data.selectedText = cleanText(startElement.oT());
                 }
-                data.nearbyText = "";
+                data.contextText = contextText(book, start, data.selectedText);
 
                 BookMetadata metadata = book.mx();
                 if (metadata != null) {
@@ -193,6 +259,80 @@ final class AiAssistantController {
                 AiAssistantLog.write("selection capture failed: " + t.toString());
             }
             return data;
+        }
+
+        private static String contextText(Book book, Position start, String selectedText) {
+            WordIterator iterator = null;
+            try {
+                AiAssistantLog.write("context extraction start");
+                iterator = book.a(start, CONTEXT_WORDS_BEFORE, CONTEXT_WORDS_AFTER, true);
+                if (iterator == null) {
+                    AiAssistantLog.write("context iterator null");
+                    return "";
+                }
+                try {
+                    iterator.setTimeout(CONTEXT_ITERATOR_TIMEOUT_MS);
+                } catch (Throwable ignored) {
+                    // Older content backends may ignore iterator timeout.
+                }
+
+                StringBuffer out = new StringBuffer();
+                int words = 0;
+                int wordLimit = CONTEXT_WORDS_BEFORE + CONTEXT_WORDS_AFTER + 500;
+                while (words < wordLimit && out.length() < CONTEXT_MAX_CHARS && iterator.hasNext()) {
+                    WordEntry entry = iterator.sz();
+                    appendWord(out, entry);
+                    words++;
+                }
+
+                String context = cleanContext(out.toString());
+                if (context.length() == 0) {
+                    context = selectedText == null ? "" : selectedText;
+                }
+                AiAssistantLog.write("context extraction done words=" + words
+                        + " length=" + context.length());
+                return context;
+            } catch (Throwable t) {
+                AiAssistantLog.write("context extraction failed: " + t.toString());
+                return "";
+            } finally {
+                if (iterator != null) {
+                    try {
+                        iterator.close();
+                    } catch (Throwable ignored) {
+                        // Ignore close errors.
+                    }
+                }
+            }
+        }
+
+        private static void appendWord(StringBuffer out, WordEntry entry) {
+            if (entry == null) {
+                return;
+            }
+            String text = entry.getText();
+            if (text == null || text.length() == 0) {
+                return;
+            }
+            if (out.length() > 0 && shouldAddSpace(entry, text)) {
+                out.append(' ');
+            }
+            out.append(text);
+        }
+
+        private static boolean shouldAddSpace(WordEntry entry, String text) {
+            if (entry.hasLeadingSpace()) {
+                return true;
+            }
+            char first = text.charAt(0);
+            return ",.;:!?)]}\"'".indexOf(first) < 0;
+        }
+
+        private static String cleanContext(String value) {
+            if (value == null) {
+                return "";
+            }
+            return truncate(value.replace('\r', '\n').trim(), CONTEXT_MAX_CHARS);
         }
 
         private static String safePosition(Position position) {
