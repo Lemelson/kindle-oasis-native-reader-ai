@@ -297,6 +297,25 @@ Built artifact:
 - Mac artifact: `patch-work/patched-ai-v10/ReaderSDK-impl.ai-v10.jar`
 - SHA-256: `0029656bc526db9fb0db06b42192c4df75d133cbb153a16a1bb0d54308f2dd8b`
 
+## AI Note v11
+
+Refines v10 streaming UI performance:
+
+- keeps streaming reasoning and streaming final answer behavior from v10
+- throttles visible stream updates by time instead of updating on every token
+- updates thinking/final text at most once every 1.5 seconds while streaming continues
+- still writes the full final answer into the card when the stream completes
+- changes the thinking display header from `OpenRouter request ... Thinking:` to just `Thinking:`
+- keeps `reasoning.effort=high`, `reasoning_exclude=false`, `max_tokens=3000`, and `provider.allow_fallbacks=false`
+
+The purpose is to reduce Kindle UI lag caused by frequent `JTextArea.setText()`,
+`revalidate()`, and repaint calls during long streams.
+
+Built artifact:
+
+- Mac artifact: `patch-work/patched-ai-v11/ReaderSDK-impl.ai-v11.jar`
+- SHA-256: `279191e14892fcabb9d9714df60ecc2567817f649a688862e5de9c447bdd800e`
+
 ## Translator Russian Target Default v1
 
 Changed `com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage.avp()` in `translator.jar` so a missing saved target language, or a saved `en` target, returns `ru` instead of letting the translator default to English.

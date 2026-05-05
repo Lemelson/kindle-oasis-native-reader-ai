@@ -23,6 +23,7 @@ final class AiAssistantCard extends SelectionDialogCard {
     private static final int CONTROL_FONT_SIZE = 12;
     private static final int BUTTON_HEIGHT = 48;
     private static final int THINKING_DISPLAY_LIMIT = 12000;
+    private static final long STREAM_UPDATE_INTERVAL_MS = 1500L;
 
     private final ReaderSDK sdk;
     private final AiAssistantController.SelectionData selection;
@@ -139,10 +140,12 @@ final class AiAssistantCard extends SelectionDialogCard {
                 return;
             }
 
-            updateStatus(name, requestId, "OpenRouter request: attempt 1.\n\nThinking:");
+            updateStatus(name, requestId, "Thinking:");
             String userPrompt = AiAssistantController.buildUserPrompt(name, instruction, selection);
             final StringBuffer thinking = new StringBuffer();
             final StringBuffer content = new StringBuffer();
+            final long[] lastThinkingUpdateMs = new long[] { 0L };
+            final long[] lastContentUpdateMs = new long[] { 0L };
             OpenRouterClient.send(sdk, config, userPrompt, new OpenRouterClient.Callback() {
                 public void onStatus(final String message) {
                     sdk.invokeLater(new Runnable() {
@@ -159,8 +162,10 @@ final class AiAssistantCard extends SelectionDialogCard {
                                 return;
                             }
                             thinking.append(text);
-                            updateStatus(name, requestId,
-                                    "OpenRouter request...\n\nThinking:\n" + displayTail(thinking.toString()));
+                            if (shouldUpdateStream(lastThinkingUpdateMs)) {
+                                updateStatus(name, requestId,
+                                        "Thinking:\n" + displayTail(thinking.toString()));
+                            }
                         }
                     });
                 }
@@ -172,7 +177,9 @@ final class AiAssistantCard extends SelectionDialogCard {
                                 return;
                             }
                             content.append(text);
-                            updateStatus(name, requestId, content.toString());
+                            if (shouldUpdateStream(lastContentUpdateMs)) {
+                                updateStatus(name, requestId, content.toString());
+                            }
                         }
                     });
                 }
@@ -208,6 +215,15 @@ final class AiAssistantCard extends SelectionDialogCard {
             AiAssistantLog.write("prompt failed name=" + name + " error=" + t.toString());
             updateStatus(name, requestId, "AI failed:\n" + t.toString());
         }
+    }
+
+    private static boolean shouldUpdateStream(long[] lastUpdateMs) {
+        long now = System.currentTimeMillis();
+        if (lastUpdateMs[0] == 0L || now - lastUpdateMs[0] >= STREAM_UPDATE_INTERVAL_MS) {
+            lastUpdateMs[0] = now;
+            return true;
+        }
+        return false;
     }
 
     private int nextRequestId(String name) {

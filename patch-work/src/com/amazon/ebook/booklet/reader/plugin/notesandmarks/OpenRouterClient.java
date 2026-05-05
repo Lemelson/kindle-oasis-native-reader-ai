@@ -71,8 +71,7 @@ final class OpenRouterClient {
             String payload = buildPayload(config, userPrompt);
             AiAssistantLog.write("streaming OpenRouter request model=" + config.model
                     + " attempt=" + (attempt + 1));
-            callback.onStatus("OpenRouter request: attempt " + (attempt + 1)
-                    + "/" + MAX_ATTEMPTS + ".\n\nThinking:");
+            callback.onStatus("Thinking:");
 
             URL url = new URL(config.baseUrl);
             connection = (HttpURLConnection) url.openConnection();
