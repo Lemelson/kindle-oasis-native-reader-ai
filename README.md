@@ -6,12 +6,12 @@ Kindle Oasis running firmware 5.18.2.
 The current working product is not a KOReader plugin. It is a native Amazon
 reader modification:
 
-- The visible selection toolbar has a `Trans` button for the built-in Amazon
+- The visible selection toolbar has a `Translate` button for the built-in Amazon
   Translation card.
 - The translation target is set to Russian by default.
-- The visible `Note` action is replaced with an `Explain` AI action.
-- Four additional AI actions are injected beside it: `Words`, `Recall`, `Why`,
-  and `Deep`.
+- The visible `Note` action is replaced with an `AI` action.
+- The `AI` action opens a compact two-column prompt menu:
+  `Explain`, `Words`, `Recall`, `Why`, `Deep`, and `Close`.
 - The AI card sends the selected text, book metadata, and surrounding context to
   OpenRouter using `deepseek/deepseek-v4-flash`.
 - The current build streams DeepSeek reasoning text first, then clears the card
@@ -22,7 +22,7 @@ reader modification:
 Current local git checkpoint:
 
 ```text
-tag: ai-note-v12-action-row-markdown
+tag: ai-note-v13-popup-menu
 ```
 
 ## Device State
@@ -49,7 +49,7 @@ as the lower-risk plugin route, but the final project went after the native
 reader UI because the desired workflow was:
 
 ```text
-select text in the normal Kindle reader -> press Explain / Words / Recall / Why / Deep or Trans -> get help in-place
+select text in the normal Kindle reader -> press AI or Translate -> get help in-place
 ```
 
 ## Current User Workflow
@@ -57,13 +57,13 @@ select text in the normal Kindle reader -> press Explain / Words / Recall / Why 
 Native translation:
 
 ```text
-select text -> Trans -> Amazon Translation card -> Russian target language
+select text -> Translate -> Amazon Translation card -> Russian target language
 ```
 
 AI assistant:
 
 ```text
-select text -> Explain / Words / Recall / Why / Deep
+select text -> AI -> Explain / Words / Recall / Why / Deep
 ```
 
 Each AI action opens a response-only smart-card. The card shows streamed
@@ -98,14 +98,17 @@ docs/
 Current AI jar:
 
 ```text
-patch-work/patched-ai-v12/ReaderSDK-impl.ai-v12.jar
-SHA-256: f419216bd20b76b2b3fcb4856c739d75ce77c1425591745e78d1b06549387ca3
+patch-work/patched-ai-v13/ReaderSDK-impl.ai-v13.jar
+SHA-256: 3b93bebd0a7a9c6d4848996089a204a28fd004fc0b1f791ec077169dea220e4e
+
+patch-work/patched-v4/Reader-plugin.jar
+SHA-256: ee547187d985b8b0391bf02165b093c6d9a3a6d799eee4e2b2e399b9bd8e8811
 ```
 
 Current KUAL install action:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v12 action row
+KUAL -> Native Reader Patch -> Install AI Note v13 popup menu
 ```
 
 Safe rollback action:

@@ -338,6 +338,34 @@ Built artifact:
 - Mac artifact: `patch-work/patched-ai-v12/ReaderSDK-impl.ai-v12.jar`
 - SHA-256: `f419216bd20b76b2b3fcb4856c739d75ce77c1425591745e78d1b06549387ca3`
 
+Device result: usable but not the desired two-row toolbar. Amazon's native
+selection toolbar kept only a few actions visible and moved the rest into the
+overflow menu instead of wrapping into a stable second row.
+
+## AI Note v13
+
+Reverts the risky v12 action-list injection and moves to a popup-menu UX:
+
+- restores `AnnotationsSelectionDialogProvider.class` to the original Kindle
+  class in the v13 jar
+- patches only `AnnotationsSelectionDialogProvider$AddNoteAction` so the native
+  `Note` slot becomes one visible `AI` action
+- pressing `AI` opens a compact `SelectionDialogCard` with a two-column prompt
+  menu: `Explain`, `Words`, `Recall`, `Why`, `Deep`, and `Close`
+- choosing a prompt opens the existing response-only AI card directly
+- keeps v12 Markdown rendering, retries, logs, streaming, 1.5s UI throttling,
+  `reasoning.effort=high`, `reasoning_exclude=false`, `max_tokens=3000`, and
+  `provider.allow_fallbacks=false`
+- updates the reader plugin label from `Trans` to `Translate` while preserving
+  the same native Amazon Translation-card behavior and Russian target default
+
+Built artifacts:
+
+- Mac artifact: `patch-work/patched-ai-v13/ReaderSDK-impl.ai-v13.jar`
+- SHA-256: `3b93bebd0a7a9c6d4848996089a204a28fd004fc0b1f791ec077169dea220e4e`
+- Mac artifact: `patch-work/patched-v4/Reader-plugin.jar`
+- SHA-256: `ee547187d985b8b0391bf02165b093c6d9a3a6d799eee4e2b2e399b9bd8e8811`
+
 ## Translator Russian Target Default v1
 
 Changed `com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage.avp()` in `translator.jar` so a missing saved target language, or a saved `en` target, returns `ru` instead of letting the translator default to English.

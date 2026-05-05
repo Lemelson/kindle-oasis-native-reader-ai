@@ -19,7 +19,7 @@ public class ShareSelectedTextAction extends ReaderAction {
     protected final int priority;
 
     public ShareSelectedTextAction(ReaderSDK sdk, String ignoredLabel, int priority, boolean showIcon) {
-        super("Trans", null);
+        super("Translate", null);
         this.aam = sdk;
         this.priority = priority;
         putValue("lab126TestID", "Translator_Action");

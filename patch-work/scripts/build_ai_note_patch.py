@@ -8,9 +8,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 ORIGINAL_JAR = ROOT / "from-kindle/native-reader-research/jars/ReaderSDK-impl.jar"
-CLASSES_DIR = ROOT / "patch-work/classes-ai-v12"
-OUT_DIR = ROOT / "patch-work/patched-ai-v12"
-OUT_JAR = OUT_DIR / "ReaderSDK-impl.ai-v12.jar"
+CLASSES_DIR = ROOT / "patch-work/classes-ai-v13"
+OUT_DIR = ROOT / "patch-work/patched-ai-v13"
+OUT_JAR = OUT_DIR / "ReaderSDK-impl.ai-v13.jar"
 
 ADD_NOTE_CLASS = (
     "com/amazon/ebook/booklet/reader/plugin/notesandmarks/"
@@ -235,11 +235,11 @@ def patch_add_note_class(original):
     action_desc = "(Ljava/awt/event/ActionEvent;)V"
 
     code_name = cp.add_utf8("Code")
-    ai_string = cp.add_string("Explain")
+    ai_string = cp.add_string("AI")
     c_ut_field = cp.find_fieldref(ADD_NOTE_CLASS, "cUT", provider_desc)
     note_constructor = cp.find_methodref(NOTE_ACTION_CLASS, "<init>", note_constructor_desc)
     set_priority = cp.add_methodref(NOTE_ACTION_CLASS, "setPriority", "(I)V")
-    ai_open = cp.add_methodref(AI_CONTROLLER_CLASS, "open", f"({provider_desc}Ljava/lang/String;)V")
+    ai_open = cp.add_methodref(AI_CONTROLLER_CLASS, "open", f"({provider_desc})V")
 
     constructor_code = bytearray()
     constructor_code.extend(b"\x2a")             # aload_0
@@ -257,7 +257,6 @@ def patch_add_note_class(original):
     action_code = bytearray()
     action_code.extend(b"\x2a")                  # aload_0
     action_code.extend(b"\xb4" + u2(c_ut_field))
-    action_code.extend(ldc(ai_string))
     action_code.extend(b"\xb8" + u2(ai_open))
     action_code.extend(b"\xb1")                  # return
 
@@ -296,7 +295,7 @@ def patch_add_note_class(original):
         elif name == "actionPerformed" and desc == action_desc:
             methods.append(method_info(
                 access_flags, name_index, desc_index, code_name,
-                bytes(action_code), 2, 2))
+                bytes(action_code), 1, 2))
         else:
             methods.append(original[method_start:method_end])
 
@@ -394,8 +393,6 @@ def build_jar():
     with zipfile.ZipFile(ORIGINAL_JAR, "r") as source:
         original_add_note_class = source.read(ADD_NOTE_CLASS + ".class")
         patched_add_note_class = patch_add_note_class(original_add_note_class)
-        original_provider_class = source.read(PROVIDER_CLASS + ".class")
-        patched_provider_class = patch_provider_class(original_provider_class)
         extra_classes = class_files_to_add()
 
         tmp_jar = OUT_JAR.with_suffix(".jar.tmp")
@@ -404,8 +401,6 @@ def build_jar():
                 data = source.read(item.filename)
                 if item.filename == ADD_NOTE_CLASS + ".class":
                     data = patched_add_note_class
-                elif item.filename == PROVIDER_CLASS + ".class":
-                    data = patched_provider_class
                 target.writestr(item, data)
             for name, data in extra_classes.items():
                 target.writestr(name, data)
