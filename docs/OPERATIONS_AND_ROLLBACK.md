@@ -15,7 +15,7 @@ If the Kindle is connected over USB, current artifacts live under:
 On Kindle, install through:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v10 streaming
+KUAL -> Native Reader Patch -> Install AI Note v12 action row
 ```
 
 The installer:
@@ -126,15 +126,15 @@ It removes:
 The current AI checkpoint is:
 
 ```text
-git tag: ai-note-v10-streaming-reasoning
+git tag: ai-note-v12-action-row-markdown
 ```
 
 It includes:
 
-- native AI button
-- five reading modes
+- direct native AI actions: Explain, Words, Recall, Why, Deep
 - streaming reasoning
 - streaming final answer
+- safe Markdown subset rendering
 - DeepSeek V4 Flash through OpenRouter
 
 ## If Reader UI Freezes
@@ -156,11 +156,11 @@ reset can remove documents and homebrew launchers.
 The AI jar is built with:
 
 ```sh
-rm -rf patch-work/classes-ai-v10 patch-work/patched-ai-v10
-mkdir -p patch-work/classes-ai-v10
-CP=$(printf '%s:' from-kindle/native-reader-research/jars/*.jar)patch-work/stub-classes
-javac --release 8 -cp "$CP" -d patch-work/classes-ai-v10 \
-  $(find patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks -maxdepth 1 -name '*.java' -print)
+rm -rf patch-work/classes-ai-v12 patch-work/patched-ai-v12
+mkdir -p patch-work/classes-ai-v12
+CP=$(printf '%s:' from-kindle/native-reader-research/jars/*.jar)
+javac --release 8 -cp "$CP" -d patch-work/classes-ai-v12 \
+  $(find patch-work/stubs patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks -name '*.java' -print)
 python3 patch-work/scripts/build_ai_note_patch.py
 ```
 
@@ -177,4 +177,3 @@ git remote -v
 ```
 
 So the work is committed locally, but not pushed to GitHub from this machine.
-

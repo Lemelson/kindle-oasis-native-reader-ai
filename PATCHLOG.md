@@ -316,6 +316,28 @@ Built artifact:
 - Mac artifact: `patch-work/patched-ai-v11/ReaderSDK-impl.ai-v11.jar`
 - SHA-256: `279191e14892fcabb9d9714df60ecc2567817f649a688862e5de9c447bdd800e`
 
+## AI Note v12
+
+Refines v11 into a direct action-row UX:
+
+- changes the patched add-note slot from `AI` to `Explain`
+- injects additional native selection actions: `Words`, `Recall`, `Why`, and `Deep`
+- each action opens the AI response card directly, without an intermediate prompt chooser
+- rewrites the card as a response-only smart-card with title, streamed response, and `Close`
+- switches final answer display from plain `JTextArea` to `JTextPane` with a safe Markdown subset
+- supports bold, italic, headings, inline code, and normal list text without using HTML
+- keeps v11 streaming, 1.5s UI throttling, retry behavior, logs, `reasoning.effort=high`,
+  `reasoning_exclude=false`, `max_tokens=3000`, and `provider.allow_fallbacks=false`
+
+The action injection is done by replacing `AnnotationsSelectionDialogProvider.getActions()`
+with a small bytecode stub that calls `AiPresetAction.syncActions(...)`, while keeping
+the original `update()` logic for Kindle highlight/delete/note state.
+
+Built artifact:
+
+- Mac artifact: `patch-work/patched-ai-v12/ReaderSDK-impl.ai-v12.jar`
+- SHA-256: `f419216bd20b76b2b3fcb4856c739d75ce77c1425591745e78d1b06549387ca3`
+
 ## Translator Russian Target Default v1
 
 Changed `com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage.avp()` in `translator.jar` so a missing saved target language, or a saved `en` target, returns `ru` instead of letting the translator default to English.

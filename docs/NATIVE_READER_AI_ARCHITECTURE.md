@@ -62,25 +62,26 @@ The source language remains Amazon's normal detection behavior.
 
 ## AI Button
 
-The visible `Note` slot is replaced with `AI`.
+The visible `Note` slot is replaced with the `Explain` AI action.
 
 Current behavior:
 
 ```text
-select text -> AI -> embedded SelectionDialogCard
+select text -> Explain / Words / Recall / Why / Deep -> embedded SelectionDialogCard
 ```
 
 The card is not a separate fullscreen application. It opens through the same
 native smart-card path used by other Kindle reader cards.
 
-The top row contains five buttons:
+v12 injects five preset actions into the native selection action list:
 
 ```text
 Explain | Words | Recall | Why | Deep
 ```
 
-The response area is a plain `JTextArea`. Earlier experiments with HTML rendering
-were dropped because Kindle rendered markup literally or behaved unpredictably.
+The response card is output-only: it has a title, the streamed response area, and
+a `Close` button. Final answers render a safe Markdown subset in a `JTextPane`
+instead of using HTML.
 
 ## Context Capture
 
@@ -134,7 +135,7 @@ reasoning_effort=high
 reasoning_exclude=false
 ```
 
-`reasoning_exclude=false` is intentional in v10 because we want streaming
+`reasoning_exclude=false` is intentional because we want streaming
 reasoning text to appear while the model is thinking.
 
 For a quieter production build, set:
@@ -147,7 +148,7 @@ That keeps reasoning enabled but prevents reasoning text from being returned.
 
 ## Request Payload
 
-The current v10 OpenRouter request uses:
+The current OpenRouter request uses:
 
 ```json
 {
@@ -174,7 +175,8 @@ routing to another model when we specifically want DeepSeek V4 Flash.
 
 ## Streaming Behavior
 
-v10 uses `HttpURLConnection` and reads Server-Sent Events from OpenRouter.
+The current build uses `HttpURLConnection` and reads Server-Sent Events from
+OpenRouter.
 
 Expected stream order from testing:
 
@@ -188,7 +190,8 @@ UI behavior:
 1. Show `Thinking:` while reasoning text streams.
 2. When final content starts, clear the thinking view.
 3. Stream the final answer directly, without a `Final answer:` prefix.
-4. Cache the completed final answer for the selected mode.
+4. Cache the completed final answer for the selected mode and selection.
+5. Render the completed answer with the safe Markdown subset.
 
 Reasoning text is capped visually to the most recent 12000 characters so very
 long thinking traces do not grow the UI without bound.
@@ -201,14 +204,14 @@ The prompt asks for:
 - direct answer first
 - focus on the selected fragment
 - no future plot spoilers beyond before context and selected fragment
-- plain text only
-- no Markdown bold or italic markers
-- no asterisks or underscores for formatting
+- concise readable formatting
+- no dependency on HTML
+- safe Markdown subset if the model returns Markdown
 
 Hyphen bullets are allowed.
 
-The client no longer strips Markdown. The model is instructed not to use it, but
-if it still returns literal symbols, the app displays them exactly as returned.
+The client renders common Markdown markers itself. It does not use a browser or
+HTML renderer inside the Kindle reader.
 
 ## Mode Semantics
 
@@ -238,10 +241,11 @@ difficult. This mode allows a longer and deeper answer.
 
 ## Known Tradeoffs
 
-- v10 is more interactive than v9 but riskier because it uses direct
+- v12 is more integrated than v11 because it injects multiple native reader
+  actions instead of using one intermediate `AI` chooser.
+- The streaming path is still riskier than v8/v9 because it uses direct
   `HttpURLConnection` streaming instead of Amazon's internal HTTP helper.
 - Showing reasoning is useful for experimentation, but it can be noisy and may
   expose model scratch work that is not meant as the final answer.
 - For day-to-day reading, a hidden-reasoning build may be calmer:
   `reasoning_exclude=true`.
-

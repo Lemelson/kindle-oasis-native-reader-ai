@@ -25,16 +25,25 @@ final class AiAssistantController {
     private AiAssistantController() { }
 
     static void open(AnnotationsSelectionDialogProvider provider) {
-        open(getReaderSDK(provider));
+        open(provider, "Explain");
+    }
+
+    static void open(AnnotationsSelectionDialogProvider provider, String modeName) {
+        open(getReaderSDK(provider), modeName);
     }
 
     static void open(final ReaderSDK sdk) {
+        open(sdk, "Explain");
+    }
+
+    static void open(final ReaderSDK sdk, String modeName) {
         if (sdk == null) {
             return;
         }
 
+        String safeMode = normalizeMode(modeName);
         try {
-            AiAssistantLog.write("ai action start");
+            AiAssistantLog.write("ai action start mode=" + safeMode);
             final SelectionData selection = SelectionData.capture(sdk);
             AiAssistantLog.write("selection captured length=" + selection.textLength());
             if (!selection.hasText()) {
@@ -42,13 +51,24 @@ final class AiAssistantController {
                 return;
             }
 
-            AiAssistantCard card = new AiAssistantCard(sdk, selection);
+            AiAssistantCard card = new AiAssistantCard(sdk, selection, safeMode);
             openSmartCard(sdk, card);
             AiAssistantLog.write("ai card opened");
         } catch (Throwable t) {
             AiAssistantLog.write("ai action failed: " + t.toString());
             showMessage(sdk, "AI failed. Use KUAL rollback if reader acts oddly.");
         }
+    }
+
+    private static String normalizeMode(String modeName) {
+        if ("Words".equals(modeName)
+                || "Recall".equals(modeName)
+                || "Why".equals(modeName)
+                || "Deep".equals(modeName)
+                || "Explain".equals(modeName)) {
+            return modeName;
+        }
+        return "Explain";
     }
 
     private static ReaderSDK getReaderSDK(AnnotationsSelectionDialogProvider provider) {

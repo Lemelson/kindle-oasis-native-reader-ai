@@ -8,9 +8,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 ORIGINAL_JAR = ROOT / "from-kindle/native-reader-research/jars/ReaderSDK-impl.jar"
-CLASSES_DIR = ROOT / "patch-work/classes-ai-v11"
-OUT_DIR = ROOT / "patch-work/patched-ai-v11"
-OUT_JAR = OUT_DIR / "ReaderSDK-impl.ai-v11.jar"
+CLASSES_DIR = ROOT / "patch-work/classes-ai-v12"
+OUT_DIR = ROOT / "patch-work/patched-ai-v12"
+OUT_JAR = OUT_DIR / "ReaderSDK-impl.ai-v12.jar"
 
 ADD_NOTE_CLASS = (
     "com/amazon/ebook/booklet/reader/plugin/notesandmarks/"
@@ -26,6 +26,9 @@ PROVIDER_CLASS = (
 )
 AI_CONTROLLER_CLASS = (
     "com/amazon/ebook/booklet/reader/plugin/notesandmarks/AiAssistantController"
+)
+AI_PRESET_ACTION_CLASS = (
+    "com/amazon/ebook/booklet/reader/plugin/notesandmarks/AiPresetAction"
 )
 
 
@@ -232,10 +235,11 @@ def patch_add_note_class(original):
     action_desc = "(Ljava/awt/event/ActionEvent;)V"
 
     code_name = cp.add_utf8("Code")
-    ai_string = cp.add_string("AI")
+    ai_string = cp.add_string("Explain")
     c_ut_field = cp.find_fieldref(ADD_NOTE_CLASS, "cUT", provider_desc)
     note_constructor = cp.find_methodref(NOTE_ACTION_CLASS, "<init>", note_constructor_desc)
-    ai_open = cp.add_methodref(AI_CONTROLLER_CLASS, "open", constructor_desc)
+    set_priority = cp.add_methodref(NOTE_ACTION_CLASS, "setPriority", "(I)V")
+    ai_open = cp.add_methodref(AI_CONTROLLER_CLASS, "open", f"({provider_desc}Ljava/lang/String;)V")
 
     constructor_code = bytearray()
     constructor_code.extend(b"\x2a")             # aload_0
@@ -245,11 +249,15 @@ def patch_add_note_class(original):
     constructor_code.extend(b"\x2b")             # aload_1
     constructor_code.extend(ldc(ai_string))
     constructor_code.extend(b"\xb7" + u2(note_constructor))
+    constructor_code.extend(b"\x2a")             # aload_0
+    constructor_code.extend(b"\x10\x19")         # bipush 25
+    constructor_code.extend(b"\xb6" + u2(set_priority))
     constructor_code.extend(b"\xb1")             # return
 
     action_code = bytearray()
     action_code.extend(b"\x2a")                  # aload_0
     action_code.extend(b"\xb4" + u2(c_ut_field))
+    action_code.extend(ldc(ai_string))
     action_code.extend(b"\xb8" + u2(ai_open))
     action_code.extend(b"\xb1")                  # return
 
@@ -288,7 +296,72 @@ def patch_add_note_class(original):
         elif name == "actionPerformed" and desc == action_desc:
             methods.append(method_info(
                 access_flags, name_index, desc_index, code_name,
-                bytes(action_code), 1, 2))
+                bytes(action_code), 2, 2))
+        else:
+            methods.append(original[method_start:method_end])
+
+    class_attributes = original[pos:]
+
+    patched = bytearray()
+    patched.extend(original[:8])
+    patched.extend(cp.bytes())
+    patched.extend(original[class_body_prefix_start:methods_count_pos])
+    patched.extend(u2(methods_count))
+    for method in methods:
+        patched.extend(method)
+    patched.extend(class_attributes)
+    return bytes(patched)
+
+
+def patch_provider_class(original):
+    cp = ConstantPool(original)
+    provider_desc = f"L{PROVIDER_CLASS};"
+    list_desc = "Ljava/util/List;"
+    get_actions_desc = "()Ljava/util/List;"
+
+    code_name = cp.add_utf8("Code")
+    actions_field = cp.find_fieldref(PROVIDER_CLASS, "cUL", list_desc)
+    sync_actions = cp.add_methodref(AI_PRESET_ACTION_CLASS, "syncActions", f"({provider_desc})V")
+
+    code = bytearray()
+    code.extend(b"\x2a")                  # aload_0
+    code.extend(b"\xb8" + u2(sync_actions))
+    code.extend(b"\x2a")                  # aload_0
+    code.extend(b"\xb4" + u2(actions_field))
+    code.extend(b"\xb0")                  # areturn
+
+    pos = cp.cp_end
+    class_body_prefix_start = pos
+    pos += 6
+    interfaces_count, pos = read_u2(original, pos)
+    pos += interfaces_count * 2
+
+    fields_count, pos = read_u2(original, pos)
+    for _ in range(fields_count):
+        pos += 6
+        pos = skip_attributes(original, pos)
+
+    methods_count_pos = pos
+    methods_count, pos = read_u2(original, pos)
+    methods = []
+    for _ in range(methods_count):
+        method_start = pos
+        access_flags, pos = read_u2(original, pos)
+        name_index, pos = read_u2(original, pos)
+        desc_index, pos = read_u2(original, pos)
+        attributes_count, pos = read_u2(original, pos)
+        for _attr in range(attributes_count):
+            pos += 2
+            length, pos = read_u4(original, pos)
+            pos += length
+        method_end = pos
+
+        name = cp.utf8(name_index)
+        desc = cp.utf8(desc_index)
+        if name == "getActions" and desc == get_actions_desc:
+            methods.append(method_info(
+                access_flags, name_index, desc_index, code_name,
+                bytes(code), 1, 1))
         else:
             methods.append(original[method_start:method_end])
 
@@ -319,8 +392,10 @@ def class_files_to_add():
 def build_jar():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(ORIGINAL_JAR, "r") as source:
-        original_class = source.read(ADD_NOTE_CLASS + ".class")
-        patched_class = patch_add_note_class(original_class)
+        original_add_note_class = source.read(ADD_NOTE_CLASS + ".class")
+        patched_add_note_class = patch_add_note_class(original_add_note_class)
+        original_provider_class = source.read(PROVIDER_CLASS + ".class")
+        patched_provider_class = patch_provider_class(original_provider_class)
         extra_classes = class_files_to_add()
 
         tmp_jar = OUT_JAR.with_suffix(".jar.tmp")
@@ -328,7 +403,9 @@ def build_jar():
             for item in source.infolist():
                 data = source.read(item.filename)
                 if item.filename == ADD_NOTE_CLASS + ".class":
-                    data = patched_class
+                    data = patched_add_note_class
+                elif item.filename == PROVIDER_CLASS + ".class":
+                    data = patched_provider_class
                 target.writestr(item, data)
             for name, data in extra_classes.items():
                 target.writestr(name, data)

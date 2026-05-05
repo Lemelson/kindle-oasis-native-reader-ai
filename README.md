@@ -9,19 +9,20 @@ reader modification:
 - The visible selection toolbar has a `Trans` button for the built-in Amazon
   Translation card.
 - The translation target is set to Russian by default.
-- The visible `Note` action is replaced with an `AI` action.
-- `AI` opens a Kindle smart-card inside the native reader with five reading
-  modes: `Explain`, `Words`, `Recall`, `Why`, and `Deep`.
+- The visible `Note` action is replaced with an `Explain` AI action.
+- Four additional AI actions are injected beside it: `Words`, `Recall`, `Why`,
+  and `Deep`.
 - The AI card sends the selected text, book metadata, and surrounding context to
   OpenRouter using `deepseek/deepseek-v4-flash`.
 - The current build streams DeepSeek reasoning text first, then clears the card
-  and streams the final answer.
+  and streams the final answer into a response-only card.
+- Final answers render a safe Markdown subset for bold, italic, headings,
+  inline code, and normal lists.
 
 Current local git checkpoint:
 
 ```text
-tag: ai-note-v10-streaming-reasoning
-commit: 121507c
+tag: ai-note-v12-action-row-markdown
 ```
 
 ## Device State
@@ -48,7 +49,7 @@ as the lower-risk plugin route, but the final project went after the native
 reader UI because the desired workflow was:
 
 ```text
-select text in the normal Kindle reader -> press AI or Trans -> get help in-place
+select text in the normal Kindle reader -> press Explain / Words / Recall / Why / Deep or Trans -> get help in-place
 ```
 
 ## Current User Workflow
@@ -62,11 +63,12 @@ select text -> Trans -> Amazon Translation card -> Russian target language
 AI assistant:
 
 ```text
-select text -> AI -> Explain / Words / Recall / Why / Deep
+select text -> Explain / Words / Recall / Why / Deep
 ```
 
-The AI card shows the model's streamed reasoning while it is thinking. When the
-final answer starts, the thinking view is replaced by the final answer text.
+Each AI action opens a response-only smart-card. The card shows streamed
+reasoning while the model is thinking. When the final answer starts, the
+thinking view is replaced by the final answer text.
 
 ## Repository Layout
 
@@ -96,14 +98,14 @@ docs/
 Current AI jar:
 
 ```text
-patch-work/patched-ai-v10/ReaderSDK-impl.ai-v10.jar
-SHA-256: 0029656bc526db9fb0db06b42192c4df75d133cbb153a16a1bb0d54308f2dd8b
+patch-work/patched-ai-v12/ReaderSDK-impl.ai-v12.jar
+SHA-256: f419216bd20b76b2b3fcb4856c739d75ce77c1425591745e78d1b06549387ca3
 ```
 
 Current KUAL install action:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v10 streaming
+KUAL -> Native Reader Patch -> Install AI Note v12 action row
 ```
 
 Safe rollback action:
@@ -129,4 +131,3 @@ More detail:
 - [Jailbreak and device setup](docs/JAILBREAK_AND_DEVICE_SETUP.md)
 - [Native reader AI architecture](docs/NATIVE_READER_AI_ARCHITECTURE.md)
 - [Operations and rollback](docs/OPERATIONS_AND_ROLLBACK.md)
-
