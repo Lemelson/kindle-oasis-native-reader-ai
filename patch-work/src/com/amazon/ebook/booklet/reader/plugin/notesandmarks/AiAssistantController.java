@@ -319,6 +319,7 @@ final class AiAssistantController {
         prompt.append("Do not summarize the whole context unless the mode requires it.\n");
         prompt.append("For plot-driven or chronological books: no spoilers beyond BEFORE_CONTEXT and SELECTED_FRAGMENT.\n");
         prompt.append("Keep the answer concise unless Mode is Deep.\n");
+        prompt.append("Use plain text only: no Markdown bold/italic markers, no asterisks, no underscores for formatting.\n");
         prompt.append("</output_rules>\n");
         return prompt.toString();
     }

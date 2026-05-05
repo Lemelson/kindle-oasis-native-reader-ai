@@ -16,7 +16,7 @@ final class OpenRouterConfig {
     int maxTokens = 3000;
     double temperature = 0.2d;
     String reasoningEffort = "high";
-    boolean reasoningExclude = true;
+    boolean reasoningExclude = false;
 
     boolean isUsable() {
         return apiKey != null && apiKey.trim().length() > 0

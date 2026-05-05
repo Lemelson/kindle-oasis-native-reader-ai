@@ -276,6 +276,27 @@ Built artifact:
 - Mac artifact: `patch-work/patched-ai-v9/ReaderSDK-impl.ai-v9.jar`
 - SHA-256: `26fb8731049ac9c2552f77872a96c774cb0cd6bf06a8a3ae168bd7437a37e5fe`
 
+## AI Note v10
+
+Experimental streaming reasoning build:
+
+- switches OpenRouter requests from `stream=false` to `stream=true`
+- switches default `reasoning_exclude` from `true` to `false` so reasoning chunks can be received
+- replaces the Amazon reader `HttpRequest` wrapper with a direct `HttpURLConnection` SSE reader
+- streams `delta.reasoning` / text `reasoning_details` into the AI card while the model is thinking
+- when final `delta.content` starts, the card clears the thinking view and streams the final response without a label prefix
+- keeps v7/v9 retry behavior, per-mode cache, `reasoning.effort=high`, `max_tokens=3000`, and `provider.allow_fallbacks=false`
+- caps the visible thinking text to the most recent 12000 characters to avoid freezing the Kindle UI on very long reasoning traces
+- adds prompt rules asking the model to use plain text only and avoid Markdown bold/italic markers, asterisks, and underscores
+- removes the old client-side Markdown stripping fallback, so the final answer is displayed exactly as returned by the model
+
+Risk: this is the first build using Java `HttpURLConnection` on the Kindle instead of Amazon's internal HTTP helper. If TLS/network behavior differs on device, use `Rollback AI Note Patch` or reinstall v9/v8.
+
+Built artifact:
+
+- Mac artifact: `patch-work/patched-ai-v10/ReaderSDK-impl.ai-v10.jar`
+- SHA-256: `0029656bc526db9fb0db06b42192c4df75d133cbb153a16a1bb0d54308f2dd8b`
+
 ## Translator Russian Target Default v1
 
 Changed `com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage.avp()` in `translator.jar` so a missing saved target language, or a saved `en` target, returns `ru` instead of letting the translator default to English.

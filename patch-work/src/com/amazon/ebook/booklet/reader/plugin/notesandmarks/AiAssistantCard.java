@@ -22,6 +22,7 @@ final class AiAssistantCard extends SelectionDialogCard {
     private static final int OUTPUT_FONT_SIZE = 8;
     private static final int CONTROL_FONT_SIZE = 12;
     private static final int BUTTON_HEIGHT = 48;
+    private static final int THINKING_DISPLAY_LIMIT = 12000;
 
     private final ReaderSDK sdk;
     private final AiAssistantController.SelectionData selection;
@@ -138,13 +139,40 @@ final class AiAssistantCard extends SelectionDialogCard {
                 return;
             }
 
-            updateStatus(name, requestId, "OpenRouter request: attempt 1.");
+            updateStatus(name, requestId, "OpenRouter request: attempt 1.\n\nThinking:");
             String userPrompt = AiAssistantController.buildUserPrompt(name, instruction, selection);
+            final StringBuffer thinking = new StringBuffer();
+            final StringBuffer content = new StringBuffer();
             OpenRouterClient.send(sdk, config, userPrompt, new OpenRouterClient.Callback() {
                 public void onStatus(final String message) {
                     sdk.invokeLater(new Runnable() {
                         public void run() {
                             updateStatus(name, requestId, message);
+                        }
+                    });
+                }
+
+                public void onThinking(final String text) {
+                    sdk.invokeLater(new Runnable() {
+                        public void run() {
+                            if (!isLatestRequest(name, requestId) || content.length() > 0) {
+                                return;
+                            }
+                            thinking.append(text);
+                            updateStatus(name, requestId,
+                                    "OpenRouter request...\n\nThinking:\n" + displayTail(thinking.toString()));
+                        }
+                    });
+                }
+
+                public void onContent(final String text) {
+                    sdk.invokeLater(new Runnable() {
+                        public void run() {
+                            if (!isLatestRequest(name, requestId)) {
+                                return;
+                            }
+                            content.append(text);
+                            updateStatus(name, requestId, content.toString());
                         }
                     });
                 }
@@ -157,7 +185,7 @@ final class AiAssistantCard extends SelectionDialogCard {
                             if (!isLatestRequest(name, requestId)) {
                                 return;
                             }
-                            String clean = stripBasicMarkdown(text);
+                            String clean = text == null ? "" : text;
                             cachedResponses.put(name, clean);
                             statusTexts.remove(name);
                             if (name.equals(activeMode)) {
@@ -206,6 +234,13 @@ final class AiAssistantCard extends SelectionDialogCard {
         }
     }
 
+    private static String displayTail(String text) {
+        if (text == null || text.length() <= THINKING_DISPLAY_LIMIT) {
+            return text == null ? "" : text;
+        }
+        return "[...]\n" + text.substring(text.length() - THINKING_DISPLAY_LIMIT);
+    }
+
     private void setOutput(String text) {
         output.setText(text == null ? "" : text);
         output.setCaretPosition(0);
@@ -213,21 +248,4 @@ final class AiAssistantCard extends SelectionDialogCard {
         repaint();
     }
 
-    private static String stripBasicMarkdown(String value) {
-        if (value == null) {
-            return "";
-        }
-        StringBuffer out = new StringBuffer(value.length());
-        for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
-            if ((c == '*' || c == '_') && i + 1 < value.length() && value.charAt(i + 1) == c) {
-                i++;
-            } else if (c == '`') {
-                // Drop inline code markers, keep the text.
-            } else {
-                out.append(c);
-            }
-        }
-        return out.toString();
-    }
 }

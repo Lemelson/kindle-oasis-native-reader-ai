@@ -1,22 +1,27 @@
 package com.amazon.ebook.booklet.reader.plugin.notesandmarks;
 
 import com.amazon.ebook.booklet.reader.sdk.ReaderSDK;
-import com.amazon.ebook.booklet.reader.utils.http.HttpRequest;
-import com.amazon.ebook.booklet.reader.utils.http.HttpRequestBuilder;
-import com.amazon.ebook.booklet.reader.utils.http.HttpRequestCallback;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.lang.reflect.Method;
-import java.util.HashMap;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.List;
 import java.util.Map;
 
 final class OpenRouterClient {
     private static final int MAX_ATTEMPTS = 6;
+    private static final int SNAPSHOT_LIMIT = 60000;
     private static final long[] RETRY_DELAYS_MS = new long[] {
             500L, 500L, 500L, 2000L, 5000L
     };
 
     interface Callback {
         void onStatus(String message);
+        void onThinking(String text);
+        void onContent(String text);
         void onSuccess(String text);
         void onError(String message);
     }
@@ -25,48 +30,194 @@ final class OpenRouterClient {
 
     static void send(ReaderSDK sdk, OpenRouterConfig config, String userPrompt, Callback callback) {
         AiAssistantLog.writeLastPrompt(config.model, userPrompt);
-        sendAttempt(sdk, config, userPrompt, callback, 0);
+        sendAttempt(sdk, config, userPrompt, callback, 0, 0L);
     }
 
     private static void sendAttempt(
+            final ReaderSDK sdk,
+            final OpenRouterConfig config,
+            final String userPrompt,
+            final Callback callback,
+            final int attempt,
+            final long delayMs) {
+        Thread requestThread = new Thread(new Runnable() {
+            public void run() {
+                if (delayMs > 0L) {
+                    try {
+                        Thread.sleep(delayMs);
+                    } catch (InterruptedException ignored) {
+                        // Continue with the retry.
+                    }
+                }
+                performStreamingRequest(sdk, config, userPrompt, callback, attempt);
+            }
+        }, "AIAssistantOpenRouterStream");
+        try {
+            requestThread.setDaemon(true);
+        } catch (Throwable ignored) {
+            // Some Kindle runtimes may not care about daemon status.
+        }
+        requestThread.start();
+    }
+
+    private static void performStreamingRequest(
             ReaderSDK sdk,
             OpenRouterConfig config,
             String userPrompt,
             Callback callback,
             int attempt) {
+        HttpURLConnection connection = null;
         try {
-            Map headers = new HashMap();
-            headers.put("Authorization", "Bearer " + config.apiKey);
-            headers.put("Content-Type", "application/json");
-            headers.put("Accept", "application/json");
-            headers.put("HTTP-Referer", config.referer);
-            headers.put("X-Title", config.title);
-
             String payload = buildPayload(config, userPrompt);
-            AiAssistantLog.write("sending OpenRouter request model=" + config.model
+            AiAssistantLog.write("streaming OpenRouter request model=" + config.model
                     + " attempt=" + (attempt + 1));
             callback.onStatus("OpenRouter request: attempt " + (attempt + 1)
-                    + "/" + MAX_ATTEMPTS + ".");
+                    + "/" + MAX_ATTEMPTS + ".\n\nThinking:");
 
-            HttpRequest request = new HttpRequestBuilder()
-                    .pA(config.baseUrl)
-                    .pB(payload)
-                    .al(headers)
-                    .hr(config.timeoutMs)
-                    .hs(0)
-                    .fY(false)
-                    .fZ(true)
-                    .a(new AiHttpCallback(sdk, config, userPrompt, callback, attempt),
-                            "KINDLEAPP:com.lab126.reader.AIAssistant");
-            request.aKa();
-        } catch (Throwable t) {
-            AiAssistantLog.write("request setup failed: " + t.toString());
-            if (scheduleRetry(sdk, config, userPrompt, callback, attempt, t.toString())) {
+            URL url = new URL(config.baseUrl);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(config.timeoutMs);
+            connection.setReadTimeout(config.timeoutMs);
+            connection.setRequestMethod("POST");
+            connection.setDoOutput(true);
+            connection.setRequestProperty("Authorization", "Bearer " + config.apiKey);
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setRequestProperty("Accept", "text/event-stream");
+            connection.setRequestProperty("HTTP-Referer", config.referer);
+            connection.setRequestProperty("X-Title", config.title);
+
+            OutputStream output = null;
+            try {
+                byte[] body = payload.getBytes("UTF-8");
+                connection.setRequestProperty("Content-Length", String.valueOf(body.length));
+                output = connection.getOutputStream();
+                output.write(body);
+                output.flush();
+            } finally {
+                if (output != null) {
+                    try {
+                        output.close();
+                    } catch (Throwable ignored) {
+                        // Ignore close errors.
+                    }
+                }
+            }
+
+            int status = connection.getResponseCode();
+            if (status < 200 || status >= 300) {
+                String errorBody = readBody(connection.getErrorStream());
+                String message = "HTTP " + status + ": " + shortReason(errorBody);
+                if (scheduleRetry(sdk, config, userPrompt, callback, attempt, message)) {
+                    return;
+                }
+                AiAssistantLog.writeLastError(message);
+                callback.onError(message);
                 return;
             }
-            AiAssistantLog.writeLastError(t.toString());
-            callback.onError(t.toString());
+
+            StreamResult result = readEventStream(connection.getInputStream(), callback);
+            AiAssistantLog.writeLastResponse(result.snapshot());
+            if (result.error != null && result.error.length() > 0) {
+                if (scheduleRetry(sdk, config, userPrompt, callback, attempt, result.error)) {
+                    return;
+                }
+                AiAssistantLog.writeLastError(result.error);
+                callback.onError(result.error);
+            } else if (result.content.length() == 0) {
+                String message = "Empty final response from OpenRouter stream.";
+                if (scheduleRetry(sdk, config, userPrompt, callback, attempt, message)) {
+                    return;
+                }
+                AiAssistantLog.writeLastError(message);
+                callback.onError(message);
+            } else {
+                callback.onSuccess(result.content.toString());
+            }
+        } catch (Throwable t) {
+            String message = t.toString();
+            AiAssistantLog.write("streaming request failed: " + message);
+            if (scheduleRetry(sdk, config, userPrompt, callback, attempt, message)) {
+                return;
+            }
+            AiAssistantLog.writeLastError(message);
+            callback.onError(message);
+        } finally {
+            if (connection != null) {
+                try {
+                    connection.disconnect();
+                } catch (Throwable ignored) {
+                    // Ignore disconnect errors.
+                }
+            }
         }
+    }
+
+    private static StreamResult readEventStream(InputStream input, Callback callback) throws Exception {
+        StreamResult result = new StreamResult();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(input, "UTF-8"));
+        try {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                appendSnapshot(result.raw, line);
+                if (!line.startsWith("data: ")) {
+                    continue;
+                }
+
+                String data = line.substring(6);
+                if ("[DONE]".equals(data)) {
+                    break;
+                }
+
+                Object parsed = parseJson(data);
+                if (!(parsed instanceof Map)) {
+                    continue;
+                }
+
+                Map root = (Map) parsed;
+                Object error = root.get("error");
+                if (error instanceof Map) {
+                    Object message = ((Map) error).get("message");
+                    result.error = "OpenRouter error: " + String.valueOf(message);
+                    break;
+                }
+
+                Map choice = firstChoice(root);
+                if (choice == null) {
+                    continue;
+                }
+
+                Map delta = mapValue(choice.get("delta"));
+                Map message = mapValue(choice.get("message"));
+                Map source = delta == null ? message : delta;
+                if (source == null) {
+                    continue;
+                }
+
+                String reasoning = stringValue(source.get("reasoning"));
+                if (reasoning.length() == 0) {
+                    reasoning = reasoningDetailsText(source.get("reasoning_details"));
+                }
+                if (reasoning.length() > 0) {
+                    result.reasoning.append(reasoning);
+                    callback.onThinking(reasoning);
+                }
+
+                String content = stringValue(source.get("content"));
+                if (content.length() > 0) {
+                    result.content.append(content);
+                    callback.onContent(content);
+                }
+            }
+        } finally {
+            try {
+                reader.close();
+            } catch (Throwable ignored) {
+                // Ignore close errors.
+            }
+        }
+        AiAssistantLog.write("stream complete content=" + result.content.length()
+                + " reasoning=" + result.reasoning.length());
+        return result;
     }
 
     private static String buildPayload(OpenRouterConfig config, String userPrompt) {
@@ -95,7 +246,7 @@ final class OpenRouterClient {
         json.append(',');
         json.append("\"max_tokens\":").append(config.maxTokens);
         json.append(',');
-        json.append("\"stream\":false");
+        json.append("\"stream\":true");
         json.append('}');
         return json.toString();
     }
@@ -126,6 +277,8 @@ final class OpenRouterClient {
                 + "but not for future plot spoilers.\n\n"
                 + "Style:\n"
                 + "Be concise, accurate, and useful. Start with the direct answer. Use simple Russian. "
+                + "Use plain text only: no Markdown emphasis, no bold, no italics, no asterisks or "
+                + "underscores for formatting; hyphen bullets are allowed. "
                 + "Do not sound like an academic essay unless the selected mode is Deep. If uncertain, say "
                 + "\"по контексту, вероятно...\" instead of inventing. Do not show your internal reasoning.";
     }
@@ -183,42 +336,59 @@ final class OpenRouterClient {
     }
 
     private static boolean scheduleRetry(
-            final ReaderSDK sdk,
-            final OpenRouterConfig config,
-            final String userPrompt,
-            final Callback callback,
-            final int attempt,
+            ReaderSDK sdk,
+            OpenRouterConfig config,
+            String userPrompt,
+            Callback callback,
+            int attempt,
             String reason) {
         if (attempt + 1 >= MAX_ATTEMPTS) {
             return false;
         }
 
-        final int nextAttempt = attempt + 1;
-        final long delayMs = RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)];
+        int nextAttempt = attempt + 1;
+        long delayMs = RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)];
         String status = "Attempt " + (attempt + 1) + "/" + MAX_ATTEMPTS
                 + " failed: " + shortReason(reason) + "\nRetry " + (nextAttempt + 1)
                 + "/" + MAX_ATTEMPTS + " in " + formatDelay(delayMs) + ".";
         AiAssistantLog.write("OpenRouter retrying after attempt " + (attempt + 1)
                 + ": " + shortReason(reason));
         callback.onStatus(status);
-
-        Thread retryThread = new Thread(new Runnable() {
-            public void run() {
-                try {
-                    Thread.sleep(delayMs);
-                } catch (InterruptedException ignored) {
-                    // Continue with the retry.
-                }
-                sendAttempt(sdk, config, userPrompt, callback, nextAttempt);
-            }
-        }, "AIAssistantOpenRouterRetry");
-        try {
-            retryThread.setDaemon(true);
-        } catch (Throwable ignored) {
-            // Some Kindle runtimes may not care about daemon status.
-        }
-        retryThread.start();
+        sendAttempt(sdk, config, userPrompt, callback, nextAttempt, delayMs);
         return true;
+    }
+
+    private static String readBody(InputStream input) {
+        if (input == null) {
+            return "";
+        }
+        StringBuffer out = new StringBuffer();
+        BufferedReader reader = null;
+        try {
+            reader = new BufferedReader(new InputStreamReader(input, "UTF-8"));
+            String line;
+            while ((line = reader.readLine()) != null && out.length() < SNAPSHOT_LIMIT) {
+                out.append(line).append('\n');
+            }
+        } catch (Throwable t) {
+            return t.toString();
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (Throwable ignored) {
+                    // Ignore close errors.
+                }
+            }
+        }
+        return out.toString();
+    }
+
+    private static void appendSnapshot(StringBuffer out, String line) {
+        if (out.length() >= SNAPSHOT_LIMIT) {
+            return;
+        }
+        out.append(line).append('\n');
     }
 
     private static String formatDelay(long delayMs) {
@@ -239,119 +409,67 @@ final class OpenRouterClient {
         return clean;
     }
 
-    private static final class AiHttpCallback implements HttpRequestCallback {
-        private final ReaderSDK sdk;
-        private final OpenRouterConfig config;
-        private final String userPrompt;
-        private final Callback callback;
-        private final int attempt;
-
-        AiHttpCallback(
-                ReaderSDK sdk,
-                OpenRouterConfig config,
-                String userPrompt,
-                Callback callback,
-                int attempt) {
-            this.sdk = sdk;
-            this.config = config;
-            this.userPrompt = userPrompt;
-            this.callback = callback;
-            this.attempt = attempt;
-        }
-
-        public void jg(String response) {
-            AiAssistantLog.write("OpenRouter response received length="
-                    + (response == null ? 0 : response.length()));
-            AiAssistantLog.writeLastResponse(response);
-            ResponseResult result = parseResponse(response);
-            if (result.error != null && result.error.length() > 0) {
-                if (retry("OpenRouter response error: " + result.error)) {
-                    return;
-                }
-                AiAssistantLog.writeLastError(result.error);
-                callback.onError(result.error);
-            } else if (result.text == null || result.text.length() == 0) {
-                if (retry("Empty response from OpenRouter.")) {
-                    return;
-                }
-                AiAssistantLog.writeLastError("Empty response from OpenRouter.");
-                callback.onError("Empty response from OpenRouter.");
-            } else {
-                callback.onSuccess(result.text);
-            }
-        }
-
-        public void b(Exception exception) {
-            String message = exception == null ? "network error" : exception.toString();
-            AiAssistantLog.write("OpenRouter request exception=" + message);
-            if (retry(message)) {
-                return;
-            }
-            AiAssistantLog.writeLastError(message);
-            callback.onError(message);
-        }
-
-        public void abl() {
-            AiAssistantLog.write("OpenRouter request timeout");
-            if (retry("Request timed out.")) {
-                return;
-            }
-            AiAssistantLog.writeLastError("Request timed out. Check Wi-Fi and OpenRouter availability.");
-            callback.onError("Request timed out. Check Wi-Fi and OpenRouter availability.");
-        }
-
-        public void aau() {
-            AiAssistantLog.write("OpenRouter request retry");
-        }
-
-        private boolean retry(String reason) {
-            return scheduleRetry(sdk, config, userPrompt, callback, attempt, reason);
-        }
+    private static Object parseJson(String value) throws Exception {
+        Class jsonValue = Class.forName("org.json.simple.JSONValue");
+        Method parse = jsonValue.getMethod("parse", new Class[] { String.class });
+        return parse.invoke(null, new Object[] { value });
     }
 
-    private static final class ResponseResult {
-        String text = "";
+    private static Map firstChoice(Map root) {
+        Object choicesObject = root.get("choices");
+        if (!(choicesObject instanceof List) || ((List) choicesObject).isEmpty()) {
+            return null;
+        }
+        Object choice = ((List) choicesObject).get(0);
+        return mapValue(choice);
+    }
+
+    private static Map mapValue(Object value) {
+        return value instanceof Map ? (Map) value : null;
+    }
+
+    private static String stringValue(Object value) {
+        return value instanceof String ? (String) value : "";
+    }
+
+    private static String reasoningDetailsText(Object value) {
+        if (!(value instanceof List)) {
+            return "";
+        }
+        List details = (List) value;
+        StringBuffer out = new StringBuffer();
+        for (int i = 0; i < details.size(); i++) {
+            Object item = details.get(i);
+            if (!(item instanceof Map)) {
+                continue;
+            }
+            Object text = ((Map) item).get("text");
+            if (text instanceof String) {
+                out.append((String) text);
+            }
+        }
+        return out.toString();
+    }
+
+    private static final class StreamResult {
+        final StringBuffer raw = new StringBuffer();
+        final StringBuffer reasoning = new StringBuffer();
+        final StringBuffer content = new StringBuffer();
         String error = "";
-    }
 
-    private static ResponseResult parseResponse(String response) {
-        ResponseResult result = new ResponseResult();
-        try {
-            Class jsonValue = Class.forName("org.json.simple.JSONValue");
-            Method parse = jsonValue.getMethod("parse", new Class[] { String.class });
-            Object root = parse.invoke(null, new Object[] { response });
-            if (!(root instanceof Map)) {
-                return result;
+        String snapshot() {
+            StringBuffer out = new StringBuffer();
+            out.append("content_length=").append(content.length()).append('\n');
+            out.append("reasoning_length=").append(reasoning.length()).append('\n');
+            out.append("\nCONTENT:\n").append(content).append('\n');
+            out.append("\nREASONING_PREVIEW:\n");
+            if (reasoning.length() > SNAPSHOT_LIMIT) {
+                out.append(reasoning.substring(0, SNAPSHOT_LIMIT)).append("\n[...]");
+            } else {
+                out.append(reasoning);
             }
-            Map map = (Map) root;
-            Object error = map.get("error");
-            if (error instanceof Map) {
-                Object message = ((Map) error).get("message");
-                result.error = "OpenRouter error: " + String.valueOf(message);
-                return result;
-            }
-            Object choicesObject = map.get("choices");
-            if (!(choicesObject instanceof List) || ((List) choicesObject).isEmpty()) {
-                return result;
-            }
-            Object choiceObject = ((List) choicesObject).get(0);
-            if (!(choiceObject instanceof Map)) {
-                return result;
-            }
-            Object messageObject = ((Map) choiceObject).get("message");
-            if (!(messageObject instanceof Map)) {
-                return result;
-            }
-            Object content = ((Map) messageObject).get("content");
-            if (content instanceof String) {
-                result.text = ((String) content).trim();
-            } else if (content != null) {
-                result.text = String.valueOf(content).trim();
-            }
-        } catch (Throwable t) {
-            AiAssistantLog.write("response parse failed: " + t.toString());
-            result.error = "Response parse failed: " + t.toString();
+            out.append("\n\nRAW_SSE_PREVIEW:\n").append(raw);
+            return out.toString();
         }
-        return result;
     }
 }
