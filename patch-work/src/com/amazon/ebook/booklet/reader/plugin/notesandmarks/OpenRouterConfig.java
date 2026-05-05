@@ -13,8 +13,10 @@ final class OpenRouterConfig {
     String referer = "https://kindle.local/native-reader-ai";
     String title = "Kindle Native Reader AI";
     int timeoutMs = 45000;
-    int maxTokens = 900;
+    int maxTokens = 3000;
     double temperature = 0.2d;
+    String reasoningEffort = "high";
+    boolean reasoningExclude = true;
 
     boolean isUsable() {
         return apiKey != null && apiKey.trim().length() > 0
@@ -43,6 +45,8 @@ final class OpenRouterConfig {
             config.timeoutMs = getInt(properties, "timeout_ms", config.timeoutMs);
             config.maxTokens = getInt(properties, "max_tokens", config.maxTokens);
             config.temperature = getDouble(properties, "temperature", config.temperature);
+            config.reasoningEffort = get(properties, "reasoning_effort", config.reasoningEffort);
+            config.reasoningExclude = getBoolean(properties, "reasoning_exclude", config.reasoningExclude);
         } catch (Throwable t) {
             AiAssistantLog.write("config load failed: " + t.toString());
         } finally {
@@ -76,5 +80,10 @@ final class OpenRouterConfig {
         } catch (Throwable ignored) {
             return fallback;
         }
+    }
+
+    private static boolean getBoolean(Properties properties, String key, boolean fallback) {
+        String value = get(properties, key, String.valueOf(fallback));
+        return "true".equalsIgnoreCase(value) || "1".equals(value) || "yes".equalsIgnoreCase(value);
     }
 }

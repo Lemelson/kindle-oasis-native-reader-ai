@@ -256,6 +256,26 @@ Built artifact:
 - Mac artifact: `patch-work/patched-ai-v8/ReaderSDK-impl.ai-v8.jar`
 - SHA-256: `cb3cf0e864f3fe8ad8a257265de2b39e439382f6757b9cfe5fad384336f3e72d`
 
+## AI Note v9
+
+Refines v8 OpenRouter/DeepSeek reasoning settings:
+
+- adds explicit OpenRouter reasoning payload:
+  - `reasoning.effort = high`
+  - `reasoning.exclude = true`
+- keeps reasoning hidden from the response while still asking OpenRouter to use reasoning internally
+- raises default `max_tokens` from 900 to 3000 so reasoning tokens and the final answer have enough output budget
+- keeps `provider.allow_fallbacks = false`, so OpenRouter should not silently route the request to another model
+- keeps `temperature = 0.2` in config, although DeepSeek thinking mode may ignore sampling controls
+- adds config keys:
+  - `reasoning_effort`
+  - `reasoning_exclude`
+
+Built artifact:
+
+- Mac artifact: `patch-work/patched-ai-v9/ReaderSDK-impl.ai-v9.jar`
+- SHA-256: `26fb8731049ac9c2552f77872a96c774cb0cd6bf06a8a3ae168bd7437a37e5fe`
+
 ## Translator Russian Target Default v1
 
 Changed `com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage.avp()` in `translator.jar` so a missing saved target language, or a saved `en` target, returns `ru` instead of letting the translator default to English.

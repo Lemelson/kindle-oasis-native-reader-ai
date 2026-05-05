@@ -76,6 +76,12 @@ final class OpenRouterClient {
         json.append(',');
         json.append("\"provider\":{\"allow_fallbacks\":false}");
         json.append(',');
+        json.append("\"reasoning\":{");
+        json.append("\"effort\":").append(quote(config.reasoningEffort));
+        json.append(',');
+        json.append("\"exclude\":").append(config.reasoningExclude ? "true" : "false");
+        json.append('}');
+        json.append(',');
         json.append("\"messages\":[");
         json.append("{\"role\":\"system\",\"content\":");
         json.append(quote(systemPrompt()));
