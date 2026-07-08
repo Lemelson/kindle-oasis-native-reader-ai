@@ -97,8 +97,8 @@ docs/
 Current AI jar:
 
 ```text
-patch-work/patched-ai-v17/ReaderSDK-impl.ai-v17.jar
-SHA-256: 903d28fd510e6a2508fc70795e9497120cdaaccecc76166c3fb720fd63110339
+patch-work/patched-ai-v18/ReaderSDK-impl.ai-v18.jar
+SHA-256: 890bb1633aaa64005c0a12ee62745435d9abda59941fe14e305b9688234332bd
 
 patch-work/patched-v3/Reader-plugin.jar
 SHA-256: d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907
@@ -107,13 +107,13 @@ SHA-256: d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907
 Current KUAL install action:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v17 Gemini Rotation
+KUAL -> Native Reader Patch -> Install AI Note v18 Gemini Report
 ```
 
 Use `Enable AI Diagnostics` before a provider routing test. In diagnostics
 mode, pressing any AI preset runs connectivity checks instead of a normal AI
-answer. Use `Disable AI Diagnostics` to return the same build to normal AI
-answers.
+answer and writes `/mnt/us/native-reader-research/ai-diagnostics-last.txt`.
+Use `Disable AI Diagnostics` to return the same build to normal AI answers.
 
 Safe rollback action:
 

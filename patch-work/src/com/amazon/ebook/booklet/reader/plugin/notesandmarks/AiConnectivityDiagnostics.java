@@ -1,10 +1,12 @@
 package com.amazon.ebook.booklet.reader.plugin.notesandmarks;
 
 import java.io.OutputStream;
+import java.io.FileOutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
 final class AiConnectivityDiagnostics {
+    private static final String REPORT_PATH = "/mnt/us/native-reader-research/ai-diagnostics-last.txt";
     private static final int BODY_LIMIT = 240;
     private static final long RETRY_DELAY_MS = 1500L;
 
@@ -38,6 +40,7 @@ final class AiConnectivityDiagnostics {
                 } finally {
                     OpenRouterClient.stopVpnProxy(config);
                     append(report, "Done.");
+                    writeReport(report);
                     callback.onUpdate(report.toString());
                     AiAssistantLog.write("diagnostics complete");
                 }
@@ -260,6 +263,25 @@ final class AiConnectivityDiagnostics {
 
     private static void append(StringBuffer out, String line) {
         out.append(line).append('\n');
+    }
+
+    private static void writeReport(StringBuffer report) {
+        FileOutputStream output = null;
+        try {
+            output = new FileOutputStream(REPORT_PATH);
+            output.write(String.valueOf(report).getBytes("UTF-8"));
+            output.flush();
+        } catch (Throwable t) {
+            AiAssistantLog.write("diagnostics report write failed: " + t.toString());
+        } finally {
+            if (output != null) {
+                try {
+                    output.close();
+                } catch (Throwable ignored) {
+                    // Ignore close errors.
+                }
+            }
+        }
     }
 
     private static void sleep(long delayMs) {

@@ -171,10 +171,10 @@ reset can remove documents and homebrew launchers.
 The AI jar is built with:
 
 ```sh
-rm -rf patch-work/classes-ai-v17 patch-work/patched-ai-v17
-mkdir -p patch-work/classes-ai-v17
+rm -rf patch-work/classes-ai-v18 patch-work/patched-ai-v18
+mkdir -p patch-work/classes-ai-v18
 CP=$(printf '%s:' from-kindle/native-reader-research/jars/*.jar)
-javac --release 8 -cp "$CP" -d patch-work/classes-ai-v17 \
+javac --release 8 -cp "$CP" -d patch-work/classes-ai-v18 \
   $(find patch-work/stubs patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks -name '*.java' -print)
 python3 patch-work/scripts/build_ai_note_patch.py
 ```
