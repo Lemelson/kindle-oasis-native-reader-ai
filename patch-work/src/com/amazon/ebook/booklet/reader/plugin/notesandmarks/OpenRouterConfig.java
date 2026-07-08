@@ -32,7 +32,8 @@ final class OpenRouterConfig {
     String geminiApiKey = "";
     String geminiApiKeys = "";
     String geminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta";
-    String geminiModels = "gemini-3.1-pro-preview,gemini-3.0-flash,gemini-3.5-flash,gemini-3-flash-preview";
+    String geminiModels = "gemini-3.5-flash";
+    String geminiThinkingLevel = "medium";
     int diagnosticAttempts = 2;
 
     boolean isUsable() {
@@ -76,6 +77,7 @@ final class OpenRouterConfig {
             config.geminiApiKeys = get(properties, "gemini_api_keys", config.geminiApiKeys);
             config.geminiBaseUrl = get(properties, "gemini_base_url", config.geminiBaseUrl);
             config.geminiModels = get(properties, "gemini_models", config.geminiModels);
+            config.geminiThinkingLevel = get(properties, "gemini_thinking_level", config.geminiThinkingLevel);
             config.diagnosticAttempts = getInt(properties, "diagnostic_attempts", config.diagnosticAttempts);
         } catch (Throwable t) {
             AiAssistantLog.write("config load failed: " + t.toString());

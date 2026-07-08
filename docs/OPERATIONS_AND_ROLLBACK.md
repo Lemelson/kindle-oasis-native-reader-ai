@@ -64,7 +64,8 @@ diagnostic_attempts=2
 gemini_api_key=...
 gemini_api_keys=...
 gemini_base_url=https://generativelanguage.googleapis.com/v1beta
-gemini_models=gemini-3.1-pro-preview,gemini-3.0-flash,gemini-3.5-flash,gemini-3-flash-preview
+gemini_models=gemini-3.5-flash
+gemini_thinking_level=medium
 ```
 
 Do not commit API keys. Do not paste API keys into logs.
@@ -171,10 +172,10 @@ reset can remove documents and homebrew launchers.
 The AI jar is built with:
 
 ```sh
-rm -rf patch-work/classes-ai-v18 patch-work/patched-ai-v18
-mkdir -p patch-work/classes-ai-v18
+rm -rf patch-work/classes-ai-v19 patch-work/patched-ai-v19
+mkdir -p patch-work/classes-ai-v19
 CP=$(printf '%s:' from-kindle/native-reader-research/jars/*.jar)
-javac --release 8 -cp "$CP" -d patch-work/classes-ai-v18 \
+javac --release 8 -cp "$CP" -d patch-work/classes-ai-v19 \
   $(find patch-work/stubs patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks -name '*.java' -print)
 python3 patch-work/scripts/build_ai_note_patch.py
 ```

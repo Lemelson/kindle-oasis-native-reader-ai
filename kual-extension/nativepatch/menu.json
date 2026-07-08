@@ -125,44 +125,50 @@
           "exitmenu": true
         },
         {
-          "name": "Start AI VPN Proxy",
+          "name": "Install AI Note v19 Gemini 3.5",
           "priority": 21,
+          "action": "./bin/install-ai-note-v19.sh",
+          "exitmenu": true
+        },
+        {
+          "name": "Start AI VPN Proxy",
+          "priority": 22,
           "action": "./bin/start-ai-vpn.sh",
           "exitmenu": true
         },
         {
           "name": "Stop AI VPN Proxy",
-          "priority": 22,
+          "priority": 23,
           "action": "./bin/stop-ai-vpn.sh",
           "exitmenu": true
         },
         {
           "name": "Enable AI Diagnostics",
-          "priority": 23,
+          "priority": 24,
           "action": "./bin/enable-ai-diagnostics.sh",
           "exitmenu": true
         },
         {
           "name": "Disable AI Diagnostics",
-          "priority": 24,
+          "priority": 25,
           "action": "./bin/disable-ai-diagnostics.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback Reader Plugin",
-          "priority": 25,
+          "priority": 26,
           "action": "./bin/rollback.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback AI Note Patch",
-          "priority": 26,
+          "priority": 27,
           "action": "./bin/rollback-ai.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback Translator Jar",
-          "priority": 27,
+          "priority": 28,
           "action": "./bin/rollback-translator.sh",
           "exitmenu": true
         }

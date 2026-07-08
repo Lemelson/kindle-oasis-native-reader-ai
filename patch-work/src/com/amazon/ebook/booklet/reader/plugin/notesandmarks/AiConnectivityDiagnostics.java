@@ -97,10 +97,12 @@ final class AiConnectivityDiagnostics {
             connection.setRequestMethod("GET");
             connection.setRequestProperty("Accept", "application/json");
             int status = connection.getResponseCode();
-            String body = OpenRouterClient.readBody(status >= 200 && status < 300
-                    ? connection.getInputStream()
-                    : connection.getErrorStream());
-            append(report, line("Gemini models.list", status, body));
+            if (status >= 200 && status < 300) {
+                append(report, "Gemini models.list: OK HTTP " + status);
+            } else {
+                String body = OpenRouterClient.readBody(connection.getErrorStream());
+                append(report, line("Gemini models.list", status, body));
+            }
         } catch (Throwable t) {
             append(report, "Gemini models.list: FAIL " + shortText(t.toString()));
         }
@@ -147,7 +149,7 @@ final class AiConnectivityDiagnostics {
                 connection.setRequestProperty("Content-Type", "application/json");
                 connection.setRequestProperty("Accept", "application/json");
 
-                byte[] body = geminiPayload().getBytes("UTF-8");
+                byte[] body = geminiPayload(config).getBytes("UTF-8");
                 connection.setRequestProperty("Content-Length", String.valueOf(body.length));
                 OutputStream output = connection.getOutputStream();
                 try {
@@ -177,9 +179,10 @@ final class AiConnectivityDiagnostics {
         }
     }
 
-    private static String geminiPayload() {
+    private static String geminiPayload(OpenRouterConfig config) {
         return "{\"contents\":[{\"parts\":[{\"text\":\"Reply with exactly: OK\"}]}],"
-                + "\"generationConfig\":{\"temperature\":0,\"maxOutputTokens\":32}}";
+                + "\"generationConfig\":{\"maxOutputTokens\":" + config.maxTokens + ","
+                + "\"thinkingConfig\":{\"thinkingLevel\":" + quote(config.geminiThinkingLevel) + "}}}";
     }
 
     private static String[] geminiKeys(OpenRouterConfig config) {
@@ -220,18 +223,26 @@ final class AiConnectivityDiagnostics {
         return label + ": " + prefix + " HTTP " + status + " " + shortText(body);
     }
 
+    private static String quote(String value) {
+        if (value == null) {
+            return "\"\"";
+        }
+        StringBuffer out = new StringBuffer(value.length() + 8);
+        out.append('"');
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '"' || c == '\\') {
+                out.append('\\');
+            }
+            out.append(c);
+        }
+        out.append('"');
+        return out.toString();
+    }
+
     private static String modelLabel(String model) {
-        if ("gemini-3.1-pro-preview".equals(model)) {
-            return "Gemini 3.1 Pro (" + model + ")";
-        }
-        if ("gemini-3.0-flash".equals(model)) {
-            return "Gemini 3.0 Flash (" + model + ")";
-        }
         if ("gemini-3.5-flash".equals(model)) {
             return "Gemini 3.5 Flash (" + model + ")";
-        }
-        if ("gemini-3-flash-preview".equals(model)) {
-            return "Gemini 3 Flash Preview (" + model + ")";
         }
         return model;
     }

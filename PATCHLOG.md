@@ -495,6 +495,29 @@ Built artifacts:
 - Mac artifact: `patch-work/patched-v3/Reader-plugin.jar`
 - SHA-256: `d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907`
 
+## AI Note v19
+
+Narrows Gemini diagnostics to Gemini 3.5 Flash only.
+
+- removes Gemini Pro, Gemini 3.0 Flash, and Gemini 3 Flash Preview from the
+  default diagnostics model list
+- suppresses the `models.list` response body so unrelated model names do not
+  appear in the UI
+- adds `gemini_thinking_level`, defaulting to `medium`
+- sends Gemini `thinkingConfig.thinkingLevel=medium`
+- uses the existing `max_tokens` value for Gemini `maxOutputTokens`; on the
+  current Kindle config this is `3000`
+
+Local Mac smoke test with the active key, `gemini-3.5-flash`,
+`thinkingLevel=medium`, and `maxOutputTokens=3000` returned HTTP 200 with `OK`.
+
+Built artifacts:
+
+- Mac artifact: `patch-work/patched-ai-v19/ReaderSDK-impl.ai-v19.jar`
+- SHA-256: `2a5736e17e2a66bbb475279dfe8fbd80bcdd799c726b6c5e3701d6c1fda1587d`
+- Mac artifact: `patch-work/patched-v3/Reader-plugin.jar`
+- SHA-256: `d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907`
+
 ## Translator Russian Target Default v1
 
 Changed `com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage.avp()` in `translator.jar` so a missing saved target language, or a saved `en` target, returns `ru` instead of letting the translator default to English.
