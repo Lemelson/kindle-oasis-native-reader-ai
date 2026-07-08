@@ -21,5 +21,8 @@ set_prop diagnostic_attempts 1
 set_prop gemini_base_url https://generativelanguage.googleapis.com/v1beta
 set_prop gemini_models gemini-3.5-flash
 set_prop gemini_thinking_level medium
+set_prop gemini_daily_request_limit 20
+set_prop gemini_quota_window_ms 86400000
+set_prop gemini_quota_cooldown_ms 3600000
 echo "[$TS] AI diagnostics enabled" >> "$LOG"
 exit 0

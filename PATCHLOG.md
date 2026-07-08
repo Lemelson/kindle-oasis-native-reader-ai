@@ -541,6 +541,35 @@ Built artifacts:
 - Mac artifact: `patch-work/patched-v3/Reader-plugin.jar`
 - SHA-256: `d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907`
 
+## AI Note v21
+
+Adds Gemini key rotation and local quota tracking.
+
+- supports multiple Gemini keys in `gemini_api_keys`
+- stores only key hashes, successful request timestamps, and cooldown timestamps
+  in `/mnt/us/native-reader-research/gemini-quota.properties`
+- counts only successful Gemini answers against the local daily request tracker
+- skips a key after 20 successful Gemini answers inside a rolling 24-hour
+  window
+- marks a key on 1-hour cooldown when Gemini returns quota/rate-limit style
+  errors such as HTTP 429 / RESOURCE_EXHAUSTED / quota exceeded
+- short tap chain remains Gemini 3.5 Flash first, then DeepSeek V4 Pro
+- long press chain is DeepSeek V4 Pro first, then Gemini 3.5 Flash, then
+  DeepSeek V4 Flash
+
+Google's official Gemini rate-limit documentation says Gemini limits are
+measured across RPM, TPM, and RPD, that exceeding any can trigger a rate-limit
+error, and that RPD quotas reset at midnight Pacific time. The local tracker
+uses a conservative rolling 24-hour window plus a 1-hour cooldown for quota
+errors because Kindle clock/timezone and account-side enforcement can differ.
+
+Built artifacts:
+
+- Mac artifact: `patch-work/patched-ai-v21/ReaderSDK-impl.ai-v21.jar`
+- SHA-256: `203ed993deb039967d3c700c87b3e2966aaddccc7968a78f1f8977d68e06e3ec`
+- Mac artifact: `patch-work/patched-v3/Reader-plugin.jar`
+- SHA-256: `d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907`
+
 ## Translator Russian Target Default v1
 
 Changed `com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage.avp()` in `translator.jar` so a missing saved target language, or a saved `en` target, returns `ru` instead of letting the translator default to English.

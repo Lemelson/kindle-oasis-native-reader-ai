@@ -34,6 +34,9 @@ final class OpenRouterConfig {
     String geminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta";
     String geminiModels = "gemini-3.5-flash";
     String geminiThinkingLevel = "medium";
+    int geminiDailyRequestLimit = 20;
+    long geminiQuotaWindowMs = 86400000L;
+    long geminiQuotaCooldownMs = 3600000L;
     int diagnosticAttempts = 2;
 
     boolean isUsable() {
@@ -78,6 +81,9 @@ final class OpenRouterConfig {
             config.geminiBaseUrl = get(properties, "gemini_base_url", config.geminiBaseUrl);
             config.geminiModels = get(properties, "gemini_models", config.geminiModels);
             config.geminiThinkingLevel = get(properties, "gemini_thinking_level", config.geminiThinkingLevel);
+            config.geminiDailyRequestLimit = getInt(properties, "gemini_daily_request_limit", config.geminiDailyRequestLimit);
+            config.geminiQuotaWindowMs = getLong(properties, "gemini_quota_window_ms", config.geminiQuotaWindowMs);
+            config.geminiQuotaCooldownMs = getLong(properties, "gemini_quota_cooldown_ms", config.geminiQuotaCooldownMs);
             config.diagnosticAttempts = getInt(properties, "diagnostic_attempts", config.diagnosticAttempts);
         } catch (Throwable t) {
             AiAssistantLog.write("config load failed: " + t.toString());
@@ -109,6 +115,14 @@ final class OpenRouterConfig {
     private static double getDouble(Properties properties, String key, double fallback) {
         try {
             return Double.parseDouble(get(properties, key, String.valueOf(fallback)));
+        } catch (Throwable ignored) {
+            return fallback;
+        }
+    }
+
+    private static long getLong(Properties properties, String key, long fallback) {
+        try {
+            return Long.parseLong(get(properties, key, String.valueOf(fallback)));
         } catch (Throwable ignored) {
             return fallback;
         }

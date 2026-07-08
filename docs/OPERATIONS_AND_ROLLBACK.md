@@ -45,7 +45,7 @@ Current shape:
 
 ```text
 api_key=...
-model=deepseek/deepseek-v4-pro
+model=deepseek/deepseek-v4-flash
 pro_model=deepseek/deepseek-v4-pro
 pro_fallback_model=xiaomi/mimo-v2.5-pro
 base_url=https://openrouter.ai/api/v1/chat/completions
@@ -66,6 +66,9 @@ gemini_api_keys=...
 gemini_base_url=https://generativelanguage.googleapis.com/v1beta
 gemini_models=gemini-3.5-flash
 gemini_thinking_level=medium
+gemini_daily_request_limit=20
+gemini_quota_window_ms=86400000
+gemini_quota_cooldown_ms=3600000
 ```
 
 Do not commit API keys. Do not paste API keys into logs.
@@ -172,10 +175,10 @@ reset can remove documents and homebrew launchers.
 The AI jar is built with:
 
 ```sh
-rm -rf patch-work/classes-ai-v20 patch-work/patched-ai-v20
-mkdir -p patch-work/classes-ai-v20
+rm -rf patch-work/classes-ai-v21 patch-work/patched-ai-v21
+mkdir -p patch-work/classes-ai-v21
 CP=$(printf '%s:' from-kindle/native-reader-research/jars/*.jar)
-javac --release 8 -cp "$CP" -d patch-work/classes-ai-v20 \
+javac --release 8 -cp "$CP" -d patch-work/classes-ai-v21 \
   $(find patch-work/stubs patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks -name '*.java' -print)
 python3 patch-work/scripts/build_ai_note_patch.py
 ```
