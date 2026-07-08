@@ -97,8 +97,8 @@ docs/
 Current AI jar:
 
 ```text
-patch-work/patched-ai-v15/ReaderSDK-impl.ai-v15.jar
-SHA-256: 3e03feadcec71cfe665ea45f2327f4b42f9cb29a49a211c05b7659f1158d33eb
+patch-work/patched-ai-v16/ReaderSDK-impl.ai-v16.jar
+SHA-256: 7a2bbf7897c657f084efc2cfa9d37c64250393ae4005911e7a5ab7152bd318a7
 
 patch-work/patched-v3/Reader-plugin.jar
 SHA-256: d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907
@@ -107,8 +107,13 @@ SHA-256: d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907
 Current KUAL install action:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v15 VPN
+KUAL -> Native Reader Patch -> Install AI Note v16 Diagnostics
 ```
+
+Use `Enable AI Diagnostics` before a provider routing test. In diagnostics
+mode, pressing any AI preset runs connectivity checks instead of a normal AI
+answer. Use `Disable AI Diagnostics` to return the same build to normal AI
+answers.
 
 Safe rollback action:
 

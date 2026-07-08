@@ -59,6 +59,11 @@ vpn_proxy_host=127.0.0.1
 vpn_proxy_port=18080
 vpn_start_script=/mnt/us/native-reader-research/vpn/start-ai-vpn.sh
 vpn_stop_script=/mnt/us/native-reader-research/vpn/stop-ai-vpn.sh
+diagnostics_enabled=false
+diagnostic_attempts=2
+gemini_api_key=...
+gemini_base_url=https://generativelanguage.googleapis.com/v1beta
+gemini_models=gemini-3.5-flash,gemini-3-flash-preview,gemini-3.1-pro-preview,gemini-3.0-flash
 ```
 
 Do not commit API keys. Do not paste API keys into logs.
@@ -165,10 +170,10 @@ reset can remove documents and homebrew launchers.
 The AI jar is built with:
 
 ```sh
-rm -rf patch-work/classes-ai-v15 patch-work/patched-ai-v15
-mkdir -p patch-work/classes-ai-v15
+rm -rf patch-work/classes-ai-v16 patch-work/patched-ai-v16
+mkdir -p patch-work/classes-ai-v16
 CP=$(printf '%s:' from-kindle/native-reader-research/jars/*.jar)
-javac --release 8 -cp "$CP" -d patch-work/classes-ai-v15 \
+javac --release 8 -cp "$CP" -d patch-work/classes-ai-v16 \
   $(find patch-work/stubs patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks -name '*.java' -print)
 python3 patch-work/scripts/build_ai_note_patch.py
 ```

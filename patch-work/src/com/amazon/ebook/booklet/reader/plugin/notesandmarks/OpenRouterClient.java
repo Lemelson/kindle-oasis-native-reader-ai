@@ -164,7 +164,7 @@ final class OpenRouterClient {
         }
     }
 
-    private static HttpURLConnection openConnection(URL url, OpenRouterConfig config) throws Exception {
+    static HttpURLConnection openConnection(URL url, OpenRouterConfig config) throws Exception {
         if (!config.vpnEnabled) {
             return (HttpURLConnection) url.openConnection();
         }
@@ -174,7 +174,7 @@ final class OpenRouterClient {
         return (HttpURLConnection) url.openConnection(proxy);
     }
 
-    private static void ensureVpnProxy(OpenRouterConfig config) throws Exception {
+    static void ensureVpnProxy(OpenRouterConfig config) throws Exception {
         if (!config.vpnEnabled) {
             return;
         }
@@ -199,7 +199,7 @@ final class OpenRouterClient {
                 + config.vpnProxyHost + ":" + config.vpnProxyPort);
     }
 
-    private static void stopVpnProxy(OpenRouterConfig config) {
+    static void stopVpnProxy(OpenRouterConfig config) {
         if (!config.vpnEnabled) {
             return;
         }
@@ -568,7 +568,7 @@ final class OpenRouterClient {
         return model;
     }
 
-    private static String readBody(InputStream input) {
+    static String readBody(InputStream input) {
         if (input == null) {
             return "";
         }

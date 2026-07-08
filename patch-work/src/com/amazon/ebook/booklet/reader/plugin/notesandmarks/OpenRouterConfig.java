@@ -28,6 +28,11 @@ final class OpenRouterConfig {
     int vpnProxyPort = 18080;
     String vpnStartScript = "/mnt/us/native-reader-research/vpn/start-ai-vpn.sh";
     String vpnStopScript = "/mnt/us/native-reader-research/vpn/stop-ai-vpn.sh";
+    boolean diagnosticsEnabled = false;
+    String geminiApiKey = "";
+    String geminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta";
+    String geminiModels = "gemini-3.5-flash,gemini-3-flash-preview,gemini-3.1-pro-preview,gemini-3.0-flash";
+    int diagnosticAttempts = 2;
 
     boolean isUsable() {
         return apiKey != null && apiKey.trim().length() > 0
@@ -65,6 +70,11 @@ final class OpenRouterConfig {
             config.vpnProxyPort = getInt(properties, "vpn_proxy_port", config.vpnProxyPort);
             config.vpnStartScript = get(properties, "vpn_start_script", config.vpnStartScript);
             config.vpnStopScript = get(properties, "vpn_stop_script", config.vpnStopScript);
+            config.diagnosticsEnabled = getBoolean(properties, "diagnostics_enabled", config.diagnosticsEnabled);
+            config.geminiApiKey = get(properties, "gemini_api_key", config.geminiApiKey);
+            config.geminiBaseUrl = get(properties, "gemini_base_url", config.geminiBaseUrl);
+            config.geminiModels = get(properties, "gemini_models", config.geminiModels);
+            config.diagnosticAttempts = getInt(properties, "diagnostic_attempts", config.diagnosticAttempts);
         } catch (Throwable t) {
             AiAssistantLog.write("config load failed: " + t.toString());
         } finally {

@@ -172,6 +172,19 @@ final class AiAssistantCard extends SelectionDialogCard {
                     + " modelTier=" + (useProModel ? "pro" : "flash"));
             OpenRouterConfig config = OpenRouterConfig.load();
             config.proRequest = useProModel;
+            if (config.diagnosticsEnabled) {
+                updateStatus(key, requestId, "AI diagnostics enabled.\nStarting checks...");
+                AiConnectivityDiagnostics.run(config, new AiConnectivityDiagnostics.Callback() {
+                    public void onUpdate(final String text) {
+                        sdk.invokeLater(new Runnable() {
+                            public void run() {
+                                updateStatus(key, requestId, text);
+                            }
+                        });
+                    }
+                });
+                return;
+            }
             if (useProModel) {
                 config.model = config.proModel;
                 config.fallbackModel = config.proFallbackModel;

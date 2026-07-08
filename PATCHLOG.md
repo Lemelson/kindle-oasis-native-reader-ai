@@ -430,6 +430,37 @@ Built artifacts:
 - Mac artifact: `patch-work/patched-v3/Reader-plugin.jar`
 - SHA-256: `d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907`
 
+## AI Note v16
+
+Adds an optional in-card connectivity diagnostics mode on top of v15.
+
+- adds `diagnostics_enabled`, `diagnostic_attempts`, `gemini_api_key`,
+  `gemini_base_url`, and `gemini_models` config keys
+- when diagnostics are enabled, pressing any AI preset shows a short provider
+  report in the normal lower AI output block instead of sending a reading prompt
+- checks OpenRouter `/api/v1/models`
+- checks Gemini `models.list`
+- checks Gemini `generateContent` for the configured model list, with at most
+  three attempts per model to avoid aggressive rate-limit probing
+- adds KUAL entries for `Install AI Note v16 Diagnostics`,
+  `Enable AI Diagnostics`, and `Disable AI Diagnostics`
+
+Default Gemini diagnostic model list:
+
+- `gemini-3.5-flash`
+- `gemini-3-flash-preview`
+- `gemini-3.1-pro-preview`
+- `gemini-3.0-flash`
+
+The UK VLESS/Xray config and Gemini API key are intentionally not tracked in git.
+
+Built artifacts:
+
+- Mac artifact: `patch-work/patched-ai-v16/ReaderSDK-impl.ai-v16.jar`
+- SHA-256: `7a2bbf7897c657f084efc2cfa9d37c64250393ae4005911e7a5ab7152bd318a7`
+- Mac artifact: `patch-work/patched-v3/Reader-plugin.jar`
+- SHA-256: `d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907`
+
 ## Translator Russian Target Default v1
 
 Changed `com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage.avp()` in `translator.jar` so a missing saved target language, or a saved `en` target, returns `ru` instead of letting the translator default to English.
