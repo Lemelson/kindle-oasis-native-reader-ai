@@ -79,14 +79,15 @@ final class AiConnectivityDiagnostics {
     private static void testGeminiModelsList(OpenRouterConfig config, StringBuffer report, Callback callback) {
         append(report, "");
         append(report, "Gemini models.list:");
-        if (!hasGeminiKey(config)) {
-            append(report, "Gemini models.list: SKIP missing gemini_api_key");
+        String[] keys = geminiKeys(config);
+        if (keys.length == 0) {
+            append(report, "Gemini models.list: SKIP missing gemini_api_key/gemini_api_keys");
             callback.onUpdate(report.toString());
             return;
         }
         callback.onUpdate(report.toString());
         try {
-            String url = trimSlash(config.geminiBaseUrl) + "/models?key=" + urlEncode(config.geminiApiKey);
+            String url = trimSlash(config.geminiBaseUrl) + "/models?key=" + urlEncode(keys[0]);
             HttpURLConnection connection = OpenRouterClient.openConnection(new URL(url), config);
             connection.setConnectTimeout(config.timeoutMs);
             connection.setReadTimeout(config.timeoutMs);
@@ -106,8 +107,9 @@ final class AiConnectivityDiagnostics {
     private static void testGeminiGenerate(OpenRouterConfig config, StringBuffer report, Callback callback) {
         append(report, "");
         append(report, "Gemini generateContent:");
-        if (!hasGeminiKey(config)) {
-            append(report, "Gemini generateContent: SKIP missing gemini_api_key");
+        String[] keys = geminiKeys(config);
+        if (keys.length == 0) {
+            append(report, "Gemini generateContent: SKIP missing gemini_api_key/gemini_api_keys");
             callback.onUpdate(report.toString());
             return;
         }
@@ -118,16 +120,22 @@ final class AiConnectivityDiagnostics {
                 continue;
             }
             callback.onUpdate(report.toString());
-            testGeminiModel(config, model, report, callback);
+            testGeminiModel(config, model, keys, report, callback);
         }
     }
 
-    private static void testGeminiModel(OpenRouterConfig config, String model, StringBuffer report, Callback callback) {
-        int attempts = Math.max(1, Math.min(config.diagnosticAttempts, 3));
+    private static void testGeminiModel(
+            OpenRouterConfig config,
+            String model,
+            String[] keys,
+            StringBuffer report,
+            Callback callback) {
+        int attempts = Math.max(1, Math.min(Math.max(config.diagnosticAttempts, keys.length), keys.length));
         for (int attempt = 1; attempt <= attempts; attempt++) {
             try {
+                String apiKey = keys[(attempt - 1) % keys.length];
                 String url = trimSlash(config.geminiBaseUrl) + "/models/" + model
-                        + ":generateContent?key=" + urlEncode(config.geminiApiKey);
+                        + ":generateContent?key=" + urlEncode(apiKey);
                 HttpURLConnection connection = OpenRouterClient.openConnection(new URL(url), config);
                 connection.setConnectTimeout(config.timeoutMs);
                 connection.setReadTimeout(config.timeoutMs);
@@ -150,13 +158,13 @@ final class AiConnectivityDiagnostics {
                 String response = OpenRouterClient.readBody(status >= 200 && status < 300
                         ? connection.getInputStream()
                         : connection.getErrorStream());
-                append(report, line(model + " attempt " + attempt + "/" + attempts, status, response));
+                append(report, line(modelLabel(model) + " key " + attempt + "/" + attempts, status, response));
                 callback.onUpdate(report.toString());
                 if (status >= 200 && status < 300) {
                     return;
                 }
             } catch (Throwable t) {
-                append(report, model + " attempt " + attempt + "/" + attempts
+                append(report, modelLabel(model) + " key " + attempt + "/" + attempts
                         + ": FAIL " + shortText(t.toString()));
                 callback.onUpdate(report.toString());
             }
@@ -171,8 +179,30 @@ final class AiConnectivityDiagnostics {
                 + "\"generationConfig\":{\"temperature\":0,\"maxOutputTokens\":32}}";
     }
 
-    private static boolean hasGeminiKey(OpenRouterConfig config) {
-        return config.geminiApiKey != null && config.geminiApiKey.trim().length() > 0;
+    private static String[] geminiKeys(OpenRouterConfig config) {
+        String source = config.geminiApiKeys;
+        if (source == null || source.trim().length() == 0) {
+            source = config.geminiApiKey;
+        }
+        if (source == null || source.trim().length() == 0) {
+            return new String[0];
+        }
+        String[] raw = source.split(",");
+        int count = 0;
+        for (int i = 0; i < raw.length; i++) {
+            if (raw[i] != null && raw[i].trim().length() > 0) {
+                count++;
+            }
+        }
+        String[] keys = new String[count];
+        int out = 0;
+        for (int i = 0; i < raw.length; i++) {
+            String key = raw[i] == null ? "" : raw[i].trim();
+            if (key.length() > 0) {
+                keys[out++] = key;
+            }
+        }
+        return keys;
     }
 
     private static String[] splitModels(String value) {
@@ -185,6 +215,22 @@ final class AiConnectivityDiagnostics {
     private static String line(String label, int status, String body) {
         String prefix = (status >= 200 && status < 300) ? "OK" : "FAIL";
         return label + ": " + prefix + " HTTP " + status + " " + shortText(body);
+    }
+
+    private static String modelLabel(String model) {
+        if ("gemini-3.1-pro-preview".equals(model)) {
+            return "Gemini 3.1 Pro (" + model + ")";
+        }
+        if ("gemini-3.0-flash".equals(model)) {
+            return "Gemini 3.0 Flash (" + model + ")";
+        }
+        if ("gemini-3.5-flash".equals(model)) {
+            return "Gemini 3.5 Flash (" + model + ")";
+        }
+        if ("gemini-3-flash-preview".equals(model)) {
+            return "Gemini 3 Flash Preview (" + model + ")";
+        }
+        return model;
     }
 
     private static String shortText(String text) {

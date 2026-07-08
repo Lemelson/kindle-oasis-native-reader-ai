@@ -17,8 +17,8 @@ set_prop() {
 mkdir -p /mnt/us/native-reader-research
 touch "$CONFIG"
 set_prop diagnostics_enabled true
-set_prop diagnostic_attempts 2
+set_prop diagnostic_attempts 3
 set_prop gemini_base_url https://generativelanguage.googleapis.com/v1beta
-set_prop gemini_models gemini-3.5-flash,gemini-3-flash-preview,gemini-3.1-pro-preview,gemini-3.0-flash
+set_prop gemini_models gemini-3.1-pro-preview,gemini-3.0-flash,gemini-3.5-flash,gemini-3-flash-preview
 echo "[$TS] AI diagnostics enabled" >> "$LOG"
 exit 0

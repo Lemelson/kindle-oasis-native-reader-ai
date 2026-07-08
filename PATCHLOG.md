@@ -461,6 +461,24 @@ Built artifacts:
 - Mac artifact: `patch-work/patched-v3/Reader-plugin.jar`
 - SHA-256: `d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907`
 
+## AI Note v17
+
+Adds Gemini API key rotation to diagnostics mode.
+
+- adds `gemini_api_keys` as a comma-separated key list
+- keeps `gemini_api_key` as a single-key fallback
+- tries each configured key once per Gemini model in diagnostics mode
+- labels attempts as `key 1/3`, `key 2/3`, etc. without printing key values
+- uses explicit display labels for Gemini model ids to avoid ambiguous output
+- updates the diagnostic model order to 3.1, 3.0, 3.5, then 3 preview
+
+Built artifacts:
+
+- Mac artifact: `patch-work/patched-ai-v17/ReaderSDK-impl.ai-v17.jar`
+- SHA-256: `903d28fd510e6a2508fc70795e9497120cdaaccecc76166c3fb720fd63110339`
+- Mac artifact: `patch-work/patched-v3/Reader-plugin.jar`
+- SHA-256: `d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907`
+
 ## Translator Russian Target Default v1
 
 Changed `com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage.avp()` in `translator.jar` so a missing saved target language, or a saved `en` target, returns `ru` instead of letting the translator default to English.

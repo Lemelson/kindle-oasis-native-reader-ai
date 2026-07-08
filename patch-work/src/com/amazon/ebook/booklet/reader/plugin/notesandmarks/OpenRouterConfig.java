@@ -30,8 +30,9 @@ final class OpenRouterConfig {
     String vpnStopScript = "/mnt/us/native-reader-research/vpn/stop-ai-vpn.sh";
     boolean diagnosticsEnabled = false;
     String geminiApiKey = "";
+    String geminiApiKeys = "";
     String geminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta";
-    String geminiModels = "gemini-3.5-flash,gemini-3-flash-preview,gemini-3.1-pro-preview,gemini-3.0-flash";
+    String geminiModels = "gemini-3.1-pro-preview,gemini-3.0-flash,gemini-3.5-flash,gemini-3-flash-preview";
     int diagnosticAttempts = 2;
 
     boolean isUsable() {
@@ -72,6 +73,7 @@ final class OpenRouterConfig {
             config.vpnStopScript = get(properties, "vpn_stop_script", config.vpnStopScript);
             config.diagnosticsEnabled = getBoolean(properties, "diagnostics_enabled", config.diagnosticsEnabled);
             config.geminiApiKey = get(properties, "gemini_api_key", config.geminiApiKey);
+            config.geminiApiKeys = get(properties, "gemini_api_keys", config.geminiApiKeys);
             config.geminiBaseUrl = get(properties, "gemini_base_url", config.geminiBaseUrl);
             config.geminiModels = get(properties, "gemini_models", config.geminiModels);
             config.diagnosticAttempts = getInt(properties, "diagnostic_attempts", config.diagnosticAttempts);
