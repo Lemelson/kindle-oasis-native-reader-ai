@@ -97,8 +97,8 @@ docs/
 Current AI jar:
 
 ```text
-patch-work/patched-ai-v19/ReaderSDK-impl.ai-v19.jar
-SHA-256: 2a5736e17e2a66bbb475279dfe8fbd80bcdd799c726b6c5e3701d6c1fda1587d
+patch-work/patched-ai-v20/ReaderSDK-impl.ai-v20.jar
+SHA-256: 3276a5bbaa55df97f19605da91b7f137ffe92fb184e8a63e21b373d8472b4e51
 
 patch-work/patched-v3/Reader-plugin.jar
 SHA-256: d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907
@@ -107,7 +107,7 @@ SHA-256: d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907
 Current KUAL install action:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v19 Gemini 3.5
+KUAL -> Native Reader Patch -> Install AI Note v20 Gemini Chain
 ```
 
 Use `Enable AI Diagnostics` before a provider routing test. In diagnostics

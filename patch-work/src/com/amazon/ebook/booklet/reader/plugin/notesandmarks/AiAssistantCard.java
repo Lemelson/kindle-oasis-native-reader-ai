@@ -185,12 +185,6 @@ final class AiAssistantCard extends SelectionDialogCard {
                 });
                 return;
             }
-            if (useProModel) {
-                config.model = config.proModel;
-                config.fallbackModel = config.proFallbackModel;
-            } else {
-                config.fallbackModel = config.proModel;
-            }
             if (!config.isUsable()) {
                 updateStatus(key, requestId,
                         "OpenRouter config missing.\nCheck /mnt/us/native-reader-research/ai-assistant.properties");
@@ -204,7 +198,7 @@ final class AiAssistantCard extends SelectionDialogCard {
             final String[] fallbackNotice = new String[] { "" };
             final long[] lastThinkingUpdateMs = new long[] { 0L };
             final long[] lastContentUpdateMs = new long[] { 0L };
-            OpenRouterClient.send(sdk, config, userPrompt, new OpenRouterClient.Callback() {
+            AiProviderChainClient.send(sdk, config, userPrompt, useProModel, new OpenRouterClient.Callback() {
                 public void onStatus(final String message) {
                     sdk.invokeLater(new Runnable() {
                         public void run() {

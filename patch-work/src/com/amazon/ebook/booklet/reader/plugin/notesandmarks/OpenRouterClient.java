@@ -339,7 +339,7 @@ final class OpenRouterClient {
         return json.toString();
     }
 
-    private static String systemPrompt() {
+    static String systemPrompt() {
         return "You are a spoiler-safe reading assistant running on a Kindle.\n\n"
                 + "The user is a Russian-speaking reader, often reading English books to improve English. "
                 + "Always answer in Russian.\n\n"

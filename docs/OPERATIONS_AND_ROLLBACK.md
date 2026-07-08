@@ -45,7 +45,7 @@ Current shape:
 
 ```text
 api_key=...
-model=deepseek/deepseek-v4-flash
+model=deepseek/deepseek-v4-pro
 pro_model=deepseek/deepseek-v4-pro
 pro_fallback_model=xiaomi/mimo-v2.5-pro
 base_url=https://openrouter.ai/api/v1/chat/completions
@@ -172,10 +172,10 @@ reset can remove documents and homebrew launchers.
 The AI jar is built with:
 
 ```sh
-rm -rf patch-work/classes-ai-v19 patch-work/patched-ai-v19
-mkdir -p patch-work/classes-ai-v19
+rm -rf patch-work/classes-ai-v20 patch-work/patched-ai-v20
+mkdir -p patch-work/classes-ai-v20
 CP=$(printf '%s:' from-kindle/native-reader-research/jars/*.jar)
-javac --release 8 -cp "$CP" -d patch-work/classes-ai-v19 \
+javac --release 8 -cp "$CP" -d patch-work/classes-ai-v20 \
   $(find patch-work/stubs patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks -name '*.java' -print)
 python3 patch-work/scripts/build_ai_note_patch.py
 ```

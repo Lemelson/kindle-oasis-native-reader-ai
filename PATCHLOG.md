@@ -518,6 +518,29 @@ Built artifacts:
 - Mac artifact: `patch-work/patched-v3/Reader-plugin.jar`
 - SHA-256: `d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907`
 
+## AI Note v20
+
+Changes the normal AI provider chain and VPN lifetime.
+
+- normal tap chain: Gemini 3.5 Flash gets 4 attempts; if it fails, DeepSeek V4
+  Pro gets 5 attempts; if that fails, Gemini 3.5 Flash gets one final attempt
+- long press chain: DeepSeek V4 Pro gets 5 attempts first; if it fails,
+  Gemini 3.5 Flash gets 4 attempts
+- DeepSeek V4 Flash is no longer used by the new normal request path
+- Gemini diagnostics remain available through `diagnostics_enabled=true`, but
+  normal mode uses the provider chain above
+- VPN is started once at the beginning of the AI request chain and stopped once
+  after the chain succeeds or finally fails
+- Gemini uses `gemini-3.5-flash`, `thinkingLevel=medium`, and the shared
+  `max_tokens` value as `maxOutputTokens`
+
+Built artifacts:
+
+- Mac artifact: `patch-work/patched-ai-v20/ReaderSDK-impl.ai-v20.jar`
+- SHA-256: `3276a5bbaa55df97f19605da91b7f137ffe92fb184e8a63e21b373d8472b4e51`
+- Mac artifact: `patch-work/patched-v3/Reader-plugin.jar`
+- SHA-256: `d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907`
+
 ## Translator Russian Target Default v1
 
 Changed `com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage.avp()` in `translator.jar` so a missing saved target language, or a saved `en` target, returns `ru` instead of letting the translator default to English.

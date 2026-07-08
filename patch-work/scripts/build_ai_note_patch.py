@@ -8,9 +8,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 ORIGINAL_JAR = ROOT / "from-kindle/native-reader-research/jars/ReaderSDK-impl.jar"
-CLASSES_DIR = ROOT / "patch-work/classes-ai-v19"
-OUT_DIR = ROOT / "patch-work/patched-ai-v19"
-OUT_JAR = OUT_DIR / "ReaderSDK-impl.ai-v19.jar"
+CLASSES_DIR = ROOT / "patch-work/classes-ai-v20"
+OUT_DIR = ROOT / "patch-work/patched-ai-v20"
+OUT_JAR = OUT_DIR / "ReaderSDK-impl.ai-v20.jar"
 
 ADD_NOTE_CLASS = (
     "com/amazon/ebook/booklet/reader/plugin/notesandmarks/"
