@@ -62,26 +62,25 @@ The source language remains Amazon's normal detection behavior.
 
 ## AI Button
 
-The visible `Note` slot is replaced with the `Explain` AI action.
+The visible `Note` slot is replaced with the `AI` action.
 
 Current behavior:
 
 ```text
-select text -> Explain / Words / Recall / Why / Deep -> embedded SelectionDialogCard
+select text -> AI -> embedded SelectionDialogCard with Explain / Words / Recall / Why / Deep
 ```
+
+Short-tapping a mode sends the request immediately with `model`. Long-pressing
+a mode for about 800 ms sends the request with `pro_model` instead and shows an
+immediate Pro status line in the lower output area.
 
 The card is not a separate fullscreen application. It opens through the same
 native smart-card path used by other Kindle reader cards.
 
-v12 injects five preset actions into the native selection action list:
-
-```text
-Explain | Words | Recall | Why | Deep
-```
-
-The response card is output-only: it has a title, the streamed response area, and
-a `Close` button. Final answers render a safe Markdown subset in a `JTextPane`
-instead of using HTML.
+v14 intentionally returns to the v11-style card: prompt buttons are inside the
+AI card, and status/reasoning/retry/final answer text streams into the lower
+plain `JTextArea`. v12 action-row injection and v13 popup-menu were useful
+experiments, but did not match the desired on-device workflow.
 
 ## Context Capture
 
@@ -127,6 +126,8 @@ Current important values:
 
 ```text
 model=deepseek/deepseek-v4-flash
+pro_model=deepseek/deepseek-v4-pro
+pro_fallback_model=xiaomi/mimo-v2.5-pro
 base_url=https://openrouter.ai/api/v1/chat/completions
 temperature=0.2
 max_tokens=3000
@@ -171,7 +172,29 @@ The current OpenRouter request uses:
 ```
 
 `allow_fallbacks=false` is important because it prevents OpenRouter from silently
-routing to another model when we specifically want DeepSeek V4 Flash.
+routing to another model. Any Flash/Pro fallback is handled explicitly by this
+patch and shown in the UI.
+
+## Retry And Fallback
+
+Each primary request gets up to 6 attempts. Retry delays are:
+
+```text
+0.5s, 0.5s, 0.5s, 2s, 2s
+```
+
+If all Flash attempts fail, the client performs 3 final fallback attempts with
+`pro_model`, delayed 2 seconds each.
+
+If all Pro attempts fail, the client first performs 4 extra attempts with
+`pro_model`, delayed 2 seconds each. If those also fail, the client performs 3
+final fallback attempts with `pro_fallback_model` (`xiaomi/mimo-v2.5-pro` by
+default), also delayed 2 seconds each.
+
+The response view keeps a visible line such as
+`Extra retry with DeepSeek V4 Pro (...)`,
+`Final fallback retry with DeepSeek V4 Pro (...)`, or
+`Final fallback retry with Xiaomi MiMo V2.5 Pro (...)`.
 
 ## Streaming Behavior
 
@@ -241,8 +264,8 @@ difficult. This mode allows a longer and deeper answer.
 
 ## Known Tradeoffs
 
-- v12 is more integrated than v11 because it injects multiple native reader
-  actions instead of using one intermediate `AI` chooser.
+- v14 keeps the v11-style embedded AI card because it is clearer on-device than
+  the v12 action row and v13 popup-menu experiments.
 - The streaming path is still riskier than v8/v9 because it uses direct
   `HttpURLConnection` streaming instead of Amazon's internal HTTP helper.
 - Showing reasoning is useful for experimentation, but it can be noisy and may

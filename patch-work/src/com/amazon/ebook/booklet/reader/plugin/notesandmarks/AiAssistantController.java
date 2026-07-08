@@ -25,29 +25,16 @@ final class AiAssistantController {
     private AiAssistantController() { }
 
     static void open(AnnotationsSelectionDialogProvider provider) {
-        openMenu(getReaderSDK(provider));
-    }
-
-    static void open(AnnotationsSelectionDialogProvider provider, String modeName) {
-        open(getReaderSDK(provider), modeName);
+        open(getReaderSDK(provider));
     }
 
     static void open(final ReaderSDK sdk) {
-        openMenu(sdk);
-    }
-
-    static void open(final ReaderSDK sdk, String modeName) {
-        openDirect(sdk, modeName);
-    }
-
-    static void openDirect(final ReaderSDK sdk, String modeName) {
         if (sdk == null) {
             return;
         }
 
-        String safeMode = normalizeMode(modeName);
         try {
-            AiAssistantLog.write("ai action start mode=" + safeMode);
+            AiAssistantLog.write("ai action start");
             final SelectionData selection = SelectionData.capture(sdk);
             AiAssistantLog.write("selection captured length=" + selection.textLength());
             if (!selection.hasText()) {
@@ -55,69 +42,13 @@ final class AiAssistantController {
                 return;
             }
 
-            AiAssistantCard card = new AiAssistantCard(sdk, selection, safeMode);
+            AiAssistantCard card = new AiAssistantCard(sdk, selection);
             openSmartCard(sdk, card);
             AiAssistantLog.write("ai card opened");
         } catch (Throwable t) {
             AiAssistantLog.write("ai action failed: " + t.toString());
             showMessage(sdk, "AI failed. Use KUAL rollback if reader acts oddly.");
         }
-    }
-
-    static void openDirect(final ReaderSDK sdk, String modeName, final SelectionData selection) {
-        if (sdk == null || selection == null) {
-            return;
-        }
-
-        String safeMode = normalizeMode(modeName);
-        try {
-            AiAssistantLog.write("ai direct action start mode=" + safeMode);
-            if (!selection.hasText()) {
-                showMessage(sdk, "No selected text found.");
-                return;
-            }
-
-            AiAssistantCard card = new AiAssistantCard(sdk, selection, safeMode);
-            openSmartCard(sdk, card);
-            AiAssistantLog.write("ai direct card opened");
-        } catch (Throwable t) {
-            AiAssistantLog.write("ai direct action failed: " + t.toString());
-            showMessage(sdk, "AI failed. Use KUAL rollback if reader acts oddly.");
-        }
-    }
-
-    private static void openMenu(final ReaderSDK sdk) {
-        if (sdk == null) {
-            return;
-        }
-
-        try {
-            AiAssistantLog.write("ai menu start");
-            final SelectionData selection = SelectionData.capture(sdk);
-            AiAssistantLog.write("selection captured for menu length=" + selection.textLength());
-            if (!selection.hasText()) {
-                showMessage(sdk, "No selected text found.");
-                return;
-            }
-
-            AiAssistantMenuCard card = new AiAssistantMenuCard(sdk, selection);
-            openSmartCard(sdk, card);
-            AiAssistantLog.write("ai menu opened");
-        } catch (Throwable t) {
-            AiAssistantLog.write("ai menu failed: " + t.toString());
-            showMessage(sdk, "AI failed. Use KUAL rollback if reader acts oddly.");
-        }
-    }
-
-    private static String normalizeMode(String modeName) {
-        if ("Words".equals(modeName)
-                || "Recall".equals(modeName)
-                || "Why".equals(modeName)
-                || "Deep".equals(modeName)
-                || "Explain".equals(modeName)) {
-            return modeName;
-        }
-        return "Explain";
     }
 
     private static ReaderSDK getReaderSDK(AnnotationsSelectionDialogProvider provider) {
@@ -132,7 +63,7 @@ final class AiAssistantController {
         }
     }
 
-    static void openSmartCard(ReaderSDK sdk, SelectionDialogCard card) throws Exception {
+    private static void openSmartCard(ReaderSDK sdk, SelectionDialogCard card) throws Exception {
         SelectionDialog dialog = sdk.Jl().HF();
         Object smartCardDialog = getField(dialog, "bBS");
         Method compactMode = getMethod(dialog.getClass(), "bN", new Class[] { Boolean.TYPE });

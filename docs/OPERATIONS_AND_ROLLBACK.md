@@ -15,7 +15,7 @@ If the Kindle is connected over USB, current artifacts live under:
 On Kindle, install through:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v12 action row
+KUAL -> Native Reader Patch -> Install AI Note v14 v11 UI
 ```
 
 The installer:
@@ -46,6 +46,8 @@ Current shape:
 ```text
 api_key=...
 model=deepseek/deepseek-v4-flash
+pro_model=deepseek/deepseek-v4-pro
+pro_fallback_model=xiaomi/mimo-v2.5-pro
 base_url=https://openrouter.ai/api/v1/chat/completions
 temperature=0.2
 max_tokens=3000
@@ -126,16 +128,17 @@ It removes:
 The current AI checkpoint is:
 
 ```text
-git tag: ai-note-v12-action-row-markdown
+AI Note v14 v11 UI upgrade
 ```
 
 It includes:
 
-- direct native AI actions: Explain, Words, Recall, Why, Deep
+- one embedded AI smart-card with top prompt buttons and lower output area
 - streaming reasoning
 - streaming final answer
-- safe Markdown subset rendering
-- DeepSeek V4 Flash through OpenRouter
+- short tap for DeepSeek V4 Flash
+- long press for DeepSeek V4 Pro
+- explicit retry/fallback status, including Xiaomi MiMo V2.5 Pro fallback
 
 ## If Reader UI Freezes
 
@@ -156,10 +159,10 @@ reset can remove documents and homebrew launchers.
 The AI jar is built with:
 
 ```sh
-rm -rf patch-work/classes-ai-v12 patch-work/patched-ai-v12
-mkdir -p patch-work/classes-ai-v12
+rm -rf patch-work/classes-ai-v14 patch-work/patched-ai-v14
+mkdir -p patch-work/classes-ai-v14
 CP=$(printf '%s:' from-kindle/native-reader-research/jars/*.jar)
-javac --release 8 -cp "$CP" -d patch-work/classes-ai-v12 \
+javac --release 8 -cp "$CP" -d patch-work/classes-ai-v14 \
   $(find patch-work/stubs patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks -name '*.java' -print)
 python3 patch-work/scripts/build_ai_note_patch.py
 ```

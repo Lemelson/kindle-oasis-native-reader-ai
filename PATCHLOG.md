@@ -366,6 +366,42 @@ Built artifacts:
 - Mac artifact: `patch-work/patched-v4/Reader-plugin.jar`
 - SHA-256: `ee547187d985b8b0391bf02165b093c6d9a3a6d799eee4e2b2e399b9bd8e8811`
 
+Device result: the popup-menu experiment was not the desired reading workflow.
+It separated mode selection from the response area and was less usable than the
+older embedded v11 card.
+
+## AI Note v14
+
+Current recommended build. This is an upgrade from the successful v11 UI rather
+than a continuation of the v12/v13 UX experiments.
+
+- restores the v11-style embedded AI smart-card: prompt buttons at the top and
+  one lower output area for status, thinking, retries, and final answer
+- removes the v12 action-row helper and the v13 popup-menu card from the v14 jar
+- starts Flash immediately on a short tap
+- starts DeepSeek V4 Pro on a long press of about 800 ms
+- keeps `deepseek/deepseek-v4-flash` as the default model
+- adds `deepseek/deepseek-v4-pro` as the Pro model
+- adds `xiaomi/mimo-v2.5-pro` as the final Pro-failure fallback
+- makes retry/fallback stages explicit in the output area
+- preserves OpenRouter `reasoning.effort=high`, streaming, prompt/response/error
+  snapshots, and `provider.allow_fallbacks=false`
+
+Retry behavior:
+
+- Flash primary gets 6 attempts with delays `0.5s, 0.5s, 0.5s, 2s, 2s`
+- if Flash fails completely, DeepSeek V4 Pro gets 3 fallback attempts at 2s
+- Pro primary gets 6 attempts with the same primary delays
+- if Pro fails completely, Pro gets 4 extra attempts at 2s
+- if those fail, Xiaomi MiMo V2.5 Pro gets 3 final fallback attempts at 2s
+
+Built artifacts:
+
+- Mac artifact: `patch-work/patched-ai-v14/ReaderSDK-impl.ai-v14.jar`
+- SHA-256: `7c076c866c79d03423ae33d0e77a24f1d9bd381e83192891b05ae200cd84d44d`
+- Mac artifact: `patch-work/patched-v3/Reader-plugin.jar`
+- SHA-256: `d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907`
+
 ## Translator Russian Target Default v1
 
 Changed `com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage.avp()` in `translator.jar` so a missing saved target language, or a saved `en` target, returns `ru` instead of letting the translator default to English.

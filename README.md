@@ -10,19 +10,18 @@ reader modification:
   Translation card.
 - The translation target is set to Russian by default.
 - The visible `Note` action is replaced with an `AI` action.
-- The `AI` action opens a compact two-column prompt menu:
-  `Explain`, `Words`, `Recall`, `Why`, `Deep`, and `Close`.
+- The `AI` action opens one embedded smart-card with prompt buttons at the top:
+  `Explain`, `Words`, `Recall`, `Why`, and `Deep`.
 - The AI card sends the selected text, book metadata, and surrounding context to
-  OpenRouter using `deepseek/deepseek-v4-flash`.
-- The current build streams DeepSeek reasoning text first, then clears the card
-  and streams the final answer into a response-only card.
-- Final answers render a safe Markdown subset for bold, italic, headings,
-  inline code, and normal lists.
+  OpenRouter using `deepseek/deepseek-v4-flash` by default.
+- A short tap on a prompt uses Flash; a long press uses DeepSeek V4 Pro.
+- The current build streams model reasoning/status, retry/fallback notices, and
+  the final answer in the same lower output area.
 
 Current local git checkpoint:
 
 ```text
-tag: ai-note-v13-popup-menu
+current: AI Note v14 v11 UI upgrade
 ```
 
 ## Device State
@@ -66,9 +65,9 @@ AI assistant:
 select text -> AI -> Explain / Words / Recall / Why / Deep
 ```
 
-Each AI action opens a response-only smart-card. The card shows streamed
-reasoning while the model is thinking. When the final answer starts, the
-thinking view is replaced by the final answer text.
+The AI card starts with an empty output area. Short-tapping a mode starts a
+Flash request immediately. Long-pressing a mode for about 0.8 seconds starts a
+DeepSeek V4 Pro request instead.
 
 ## Repository Layout
 
@@ -98,17 +97,17 @@ docs/
 Current AI jar:
 
 ```text
-patch-work/patched-ai-v13/ReaderSDK-impl.ai-v13.jar
-SHA-256: 3b93bebd0a7a9c6d4848996089a204a28fd004fc0b1f791ec077169dea220e4e
+patch-work/patched-ai-v14/ReaderSDK-impl.ai-v14.jar
+SHA-256: 7c076c866c79d03423ae33d0e77a24f1d9bd381e83192891b05ae200cd84d44d
 
-patch-work/patched-v4/Reader-plugin.jar
-SHA-256: ee547187d985b8b0391bf02165b093c6d9a3a6d799eee4e2b2e399b9bd8e8811
+patch-work/patched-v3/Reader-plugin.jar
+SHA-256: d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907
 ```
 
 Current KUAL install action:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v13 popup menu
+KUAL -> Native Reader Patch -> Install AI Note v14 v11 UI
 ```
 
 Safe rollback action:

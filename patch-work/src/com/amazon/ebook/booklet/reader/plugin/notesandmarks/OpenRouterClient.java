@@ -13,9 +13,12 @@ import java.util.Map;
 
 final class OpenRouterClient {
     private static final int MAX_ATTEMPTS = 6;
+    private static final int EXTRA_PRO_ATTEMPTS = 4;
+    private static final int FALLBACK_ATTEMPTS = 3;
     private static final int SNAPSHOT_LIMIT = 60000;
+    private static final long FALLBACK_RETRY_DELAY_MS = 2000L;
     private static final long[] RETRY_DELAYS_MS = new long[] {
-            500L, 500L, 500L, 2000L, 5000L
+            500L, 500L, 500L, 2000L, 2000L
     };
 
     interface Callback {
@@ -70,7 +73,8 @@ final class OpenRouterClient {
         try {
             String payload = buildPayload(config, userPrompt);
             AiAssistantLog.write("streaming OpenRouter request model=" + config.model
-                    + " attempt=" + (attempt + 1));
+                    + " attempt=" + (attempt + 1)
+                    + " fallback=" + config.fallbackRequest);
             callback.onStatus("Thinking:");
 
             URL url = new URL(config.baseUrl);
@@ -341,20 +345,142 @@ final class OpenRouterClient {
             Callback callback,
             int attempt,
             String reason) {
-        if (attempt + 1 >= MAX_ATTEMPTS) {
+        int maxAttempts = maxAttempts(config);
+        if (attempt + 1 >= maxAttempts) {
+            if (scheduleNextRetryPhase(sdk, config, userPrompt, callback, reason)) {
+                return true;
+            }
             return false;
         }
 
         int nextAttempt = attempt + 1;
-        long delayMs = RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)];
-        String status = "Attempt " + (attempt + 1) + "/" + MAX_ATTEMPTS
-                + " failed: " + shortReason(reason) + "\nRetry " + (nextAttempt + 1)
-                + "/" + MAX_ATTEMPTS + " in " + formatDelay(delayMs) + ".";
+        long delayMs = retryDelay(config, attempt);
+        String status = retryStatus(config, attempt, nextAttempt, maxAttempts, delayMs, reason);
         AiAssistantLog.write("OpenRouter retrying after attempt " + (attempt + 1)
-                + ": " + shortReason(reason));
+                + " phase=" + config.retryPhase + ": " + shortReason(reason));
         callback.onStatus(status);
         sendAttempt(sdk, config, userPrompt, callback, nextAttempt, delayMs);
         return true;
+    }
+
+    private static boolean scheduleNextRetryPhase(
+            ReaderSDK sdk,
+            OpenRouterConfig config,
+            String userPrompt,
+            Callback callback,
+            String reason) {
+        if (config.retryPhase == 0) {
+            if (config.proRequest) {
+                config.retryPhase = 1;
+                config.fallbackRequest = true;
+                return schedulePhaseStart(sdk, config, userPrompt, callback, reason,
+                        extraProNotice(config));
+            }
+            if (!switchModel(config, config.proModel)) {
+                return false;
+            }
+            config.retryPhase = 1;
+            config.fallbackRequest = true;
+            return schedulePhaseStart(sdk, config, userPrompt, callback, reason,
+                    fallbackNoticeLine(config));
+        }
+
+        if (config.proRequest && config.retryPhase == 1) {
+            if (!switchModel(config, config.proFallbackModel)) {
+                return false;
+            }
+            config.retryPhase = 2;
+            config.fallbackRequest = true;
+            return schedulePhaseStart(sdk, config, userPrompt, callback, reason,
+                    fallbackNoticeLine(config));
+        }
+
+        return false;
+    }
+
+    private static boolean schedulePhaseStart(
+            ReaderSDK sdk,
+            OpenRouterConfig config,
+            String userPrompt,
+            Callback callback,
+            String reason,
+            String notice) {
+        long delayMs = FALLBACK_RETRY_DELAY_MS;
+        String status = notice + " attempt 1/" + maxAttempts(config)
+                + " in " + formatDelay(delayMs) + ".\nPrevious failure: " + shortReason(reason);
+        AiAssistantLog.write("OpenRouter retry phase " + config.retryPhase
+                + " model=" + config.model + " after: " + shortReason(reason));
+        callback.onStatus(status);
+        sendAttempt(sdk, config, userPrompt, callback, 0, delayMs);
+        return true;
+    }
+
+    private static boolean switchModel(OpenRouterConfig config, String model) {
+        if (model == null || model.trim().length() == 0 || model.equals(config.model)) {
+            return false;
+        }
+        config.model = model;
+        return true;
+    }
+
+    private static int maxAttempts(OpenRouterConfig config) {
+        if (config.retryPhase == 0) {
+            return MAX_ATTEMPTS;
+        }
+        if (config.proRequest && config.retryPhase == 1) {
+            return EXTRA_PRO_ATTEMPTS;
+        }
+        return FALLBACK_ATTEMPTS;
+    }
+
+    private static long retryDelay(OpenRouterConfig config, int attempt) {
+        if (config.retryPhase == 0) {
+            return RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)];
+        }
+        return FALLBACK_RETRY_DELAY_MS;
+    }
+
+    private static String retryStatus(
+            OpenRouterConfig config,
+            int attempt,
+            int nextAttempt,
+            int maxAttempts,
+            long delayMs,
+            String reason) {
+        String prefix = "";
+        if (config.retryPhase == 1 && config.proRequest) {
+            prefix = extraProNotice(config) + "\n";
+        } else if (config.retryPhase > 0) {
+            prefix = fallbackNoticeLine(config) + "\n";
+        }
+        return prefix + "Attempt " + (attempt + 1) + "/" + maxAttempts
+                + " with " + modelLabel(config.model, config)
+                + " failed: " + shortReason(reason) + "\nRetry " + (nextAttempt + 1)
+                + "/" + maxAttempts + " in " + formatDelay(delayMs) + ".";
+    }
+
+    private static String extraProNotice(OpenRouterConfig config) {
+        return "Extra retry with " + modelLabel(config.model, config);
+    }
+
+    private static String fallbackNoticeLine(OpenRouterConfig config) {
+        return "Final fallback retry with " + modelLabel(config.model, config);
+    }
+
+    private static String modelLabel(String model, OpenRouterConfig config) {
+        if (model == null) {
+            return "";
+        }
+        if (model.equals(config.proModel) || model.indexOf("deepseek-v4-pro") >= 0) {
+            return "DeepSeek V4 Pro (" + model + ")";
+        }
+        if (model.equals(config.proFallbackModel) || model.indexOf("mimo-v2.5-pro") >= 0) {
+            return "Xiaomi MiMo V2.5 Pro (" + model + ")";
+        }
+        if (model.equals(config.model) || model.indexOf("deepseek-v4-flash") >= 0) {
+            return "DeepSeek V4 Flash (" + model + ")";
+        }
+        return model;
     }
 
     private static String readBody(InputStream input) {
