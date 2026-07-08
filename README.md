@@ -21,7 +21,7 @@ reader modification:
 Current local git checkpoint:
 
 ```text
-current: AI Note v14 v11 UI upgrade
+current: AI Note v15 VPN proxy
 ```
 
 ## Device State
@@ -97,8 +97,8 @@ docs/
 Current AI jar:
 
 ```text
-patch-work/patched-ai-v14/ReaderSDK-impl.ai-v14.jar
-SHA-256: 7c076c866c79d03423ae33d0e77a24f1d9bd381e83192891b05ae200cd84d44d
+patch-work/patched-ai-v15/ReaderSDK-impl.ai-v15.jar
+SHA-256: 3e03feadcec71cfe665ea45f2327f4b42f9cb29a49a211c05b7659f1158d33eb
 
 patch-work/patched-v3/Reader-plugin.jar
 SHA-256: d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907
@@ -107,7 +107,7 @@ SHA-256: d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907
 Current KUAL install action:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v14 v11 UI
+KUAL -> Native Reader Patch -> Install AI Note v15 VPN
 ```
 
 Safe rollback action:

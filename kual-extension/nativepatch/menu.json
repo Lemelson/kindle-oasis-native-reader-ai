@@ -101,20 +101,38 @@
           "exitmenu": true
         },
         {
-          "name": "Rollback Reader Plugin",
+          "name": "Install AI Note v15 VPN",
           "priority": 17,
+          "action": "./bin/install-ai-note-v15.sh",
+          "exitmenu": true
+        },
+        {
+          "name": "Start AI VPN Proxy",
+          "priority": 18,
+          "action": "./bin/start-ai-vpn.sh",
+          "exitmenu": true
+        },
+        {
+          "name": "Stop AI VPN Proxy",
+          "priority": 19,
+          "action": "./bin/stop-ai-vpn.sh",
+          "exitmenu": true
+        },
+        {
+          "name": "Rollback Reader Plugin",
+          "priority": 20,
           "action": "./bin/rollback.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback AI Note Patch",
-          "priority": 18,
+          "priority": 21,
           "action": "./bin/rollback-ai.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback Translator Jar",
-          "priority": 19,
+          "priority": 22,
           "action": "./bin/rollback-translator.sh",
           "exitmenu": true
         }

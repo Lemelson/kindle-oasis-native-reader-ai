@@ -23,6 +23,11 @@ final class OpenRouterConfig {
     double temperature = 0.2d;
     String reasoningEffort = "high";
     boolean reasoningExclude = false;
+    boolean vpnEnabled = false;
+    String vpnProxyHost = "127.0.0.1";
+    int vpnProxyPort = 18080;
+    String vpnStartScript = "/mnt/us/native-reader-research/vpn/start-ai-vpn.sh";
+    String vpnStopScript = "/mnt/us/native-reader-research/vpn/stop-ai-vpn.sh";
 
     boolean isUsable() {
         return apiKey != null && apiKey.trim().length() > 0
@@ -55,6 +60,11 @@ final class OpenRouterConfig {
             config.temperature = getDouble(properties, "temperature", config.temperature);
             config.reasoningEffort = get(properties, "reasoning_effort", config.reasoningEffort);
             config.reasoningExclude = getBoolean(properties, "reasoning_exclude", config.reasoningExclude);
+            config.vpnEnabled = getBoolean(properties, "vpn_enabled", config.vpnEnabled);
+            config.vpnProxyHost = get(properties, "vpn_proxy_host", config.vpnProxyHost);
+            config.vpnProxyPort = getInt(properties, "vpn_proxy_port", config.vpnProxyPort);
+            config.vpnStartScript = get(properties, "vpn_start_script", config.vpnStartScript);
+            config.vpnStopScript = get(properties, "vpn_stop_script", config.vpnStopScript);
         } catch (Throwable t) {
             AiAssistantLog.write("config load failed: " + t.toString());
         } finally {

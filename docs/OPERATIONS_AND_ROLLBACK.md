@@ -15,7 +15,7 @@ If the Kindle is connected over USB, current artifacts live under:
 On Kindle, install through:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v14 v11 UI
+KUAL -> Native Reader Patch -> Install AI Note v15 VPN
 ```
 
 The installer:
@@ -54,6 +54,11 @@ max_tokens=3000
 timeout_ms=45000
 reasoning_effort=high
 reasoning_exclude=false
+vpn_enabled=true
+vpn_proxy_host=127.0.0.1
+vpn_proxy_port=18080
+vpn_start_script=/mnt/us/native-reader-research/vpn/start-ai-vpn.sh
+vpn_stop_script=/mnt/us/native-reader-research/vpn/stop-ai-vpn.sh
 ```
 
 Do not commit API keys. Do not paste API keys into logs.
@@ -139,6 +144,7 @@ It includes:
 - short tap for DeepSeek V4 Flash
 - long press for DeepSeek V4 Pro
 - explicit retry/fallback status, including Xiaomi MiMo V2.5 Pro fallback
+- optional local Xray/VLESS HTTP proxy for OpenRouter requests in v15
 
 ## If Reader UI Freezes
 
@@ -159,10 +165,10 @@ reset can remove documents and homebrew launchers.
 The AI jar is built with:
 
 ```sh
-rm -rf patch-work/classes-ai-v14 patch-work/patched-ai-v14
-mkdir -p patch-work/classes-ai-v14
+rm -rf patch-work/classes-ai-v15 patch-work/patched-ai-v15
+mkdir -p patch-work/classes-ai-v15
 CP=$(printf '%s:' from-kindle/native-reader-research/jars/*.jar)
-javac --release 8 -cp "$CP" -d patch-work/classes-ai-v14 \
+javac --release 8 -cp "$CP" -d patch-work/classes-ai-v15 \
   $(find patch-work/stubs patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks -name '*.java' -print)
 python3 patch-work/scripts/build_ai_note_patch.py
 ```

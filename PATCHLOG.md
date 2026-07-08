@@ -402,6 +402,34 @@ Built artifacts:
 - Mac artifact: `patch-work/patched-v3/Reader-plugin.jar`
 - SHA-256: `d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907`
 
+## AI Note v15
+
+Adds optional on-demand VPN proxy support for OpenRouter requests while keeping
+the v14/v11-style embedded UI.
+
+- adds `vpn_enabled`, `vpn_proxy_host`, `vpn_proxy_port`, `vpn_start_script`,
+  and `vpn_stop_script` config keys
+- when enabled, starts a local HTTP proxy before each OpenRouter attempt
+- routes only the AI HTTP request through the local proxy, not the whole Kindle
+- stops the proxy after the attempt finishes, which avoids a continuously
+  running VPN process for normal reading
+- adds KUAL entries for `Install AI Note v15 VPN`, `Start AI VPN Proxy`, and
+  `Stop AI VPN Proxy`
+
+The real VLESS/Xray config is intentionally not tracked in git because it
+contains subscription credentials.
+
+Gemini API testing note: direct Google connectivity from the Mac timed out, and
+the provided VLESS endpoint later returned TLS resets for Google API tests.
+Gemini fallbacks were therefore not added to the patch.
+
+Built artifacts:
+
+- Mac artifact: `patch-work/patched-ai-v15/ReaderSDK-impl.ai-v15.jar`
+- SHA-256: `3e03feadcec71cfe665ea45f2327f4b42f9cb29a49a211c05b7659f1158d33eb`
+- Mac artifact: `patch-work/patched-v3/Reader-plugin.jar`
+- SHA-256: `d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907`
+
 ## Translator Russian Target Default v1
 
 Changed `com.amazon.ebook.booklet.reader.plugin.translator.ui.TranslatorStorage.avp()` in `translator.jar` so a missing saved target language, or a saved `en` target, returns `ru` instead of letting the translator default to English.

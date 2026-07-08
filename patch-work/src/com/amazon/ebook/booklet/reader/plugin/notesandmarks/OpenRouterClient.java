@@ -7,6 +7,9 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.net.Socket;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +19,7 @@ final class OpenRouterClient {
     private static final int EXTRA_PRO_ATTEMPTS = 4;
     private static final int FALLBACK_ATTEMPTS = 3;
     private static final int SNAPSHOT_LIMIT = 60000;
+    private static final int VPN_READY_TIMEOUT_MS = 10000;
     private static final long FALLBACK_RETRY_DELAY_MS = 2000L;
     private static final long[] RETRY_DELAYS_MS = new long[] {
             500L, 500L, 500L, 2000L, 2000L
@@ -75,10 +79,14 @@ final class OpenRouterClient {
             AiAssistantLog.write("streaming OpenRouter request model=" + config.model
                     + " attempt=" + (attempt + 1)
                     + " fallback=" + config.fallbackRequest);
+            if (config.vpnEnabled) {
+                callback.onStatus("Starting VPN proxy for OpenRouter...");
+                ensureVpnProxy(config);
+            }
             callback.onStatus("Thinking:");
 
             URL url = new URL(config.baseUrl);
-            connection = (HttpURLConnection) url.openConnection();
+            connection = openConnection(url, config);
             connection.setConnectTimeout(config.timeoutMs);
             connection.setReadTimeout(config.timeoutMs);
             connection.setRequestMethod("POST");
@@ -150,6 +158,83 @@ final class OpenRouterClient {
                     connection.disconnect();
                 } catch (Throwable ignored) {
                     // Ignore disconnect errors.
+                }
+            }
+            stopVpnProxy(config);
+        }
+    }
+
+    private static HttpURLConnection openConnection(URL url, OpenRouterConfig config) throws Exception {
+        if (!config.vpnEnabled) {
+            return (HttpURLConnection) url.openConnection();
+        }
+        Proxy proxy = new Proxy(
+                Proxy.Type.HTTP,
+                new InetSocketAddress(config.vpnProxyHost, config.vpnProxyPort));
+        return (HttpURLConnection) url.openConnection(proxy);
+    }
+
+    private static void ensureVpnProxy(OpenRouterConfig config) throws Exception {
+        if (!config.vpnEnabled) {
+            return;
+        }
+        if (isPortOpen(config.vpnProxyHost, config.vpnProxyPort, 500)) {
+            return;
+        }
+        runScript(config.vpnStartScript);
+        long deadline = System.currentTimeMillis() + VPN_READY_TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            if (isPortOpen(config.vpnProxyHost, config.vpnProxyPort, 500)) {
+                AiAssistantLog.write("VPN proxy ready on " + config.vpnProxyHost
+                        + ":" + config.vpnProxyPort);
+                return;
+            }
+            try {
+                Thread.sleep(500L);
+            } catch (InterruptedException ignored) {
+                // Keep waiting until the timeout.
+            }
+        }
+        throw new RuntimeException("VPN proxy did not become ready on "
+                + config.vpnProxyHost + ":" + config.vpnProxyPort);
+    }
+
+    private static void stopVpnProxy(OpenRouterConfig config) {
+        if (!config.vpnEnabled) {
+            return;
+        }
+        try {
+            runScript(config.vpnStopScript);
+        } catch (Throwable t) {
+            AiAssistantLog.write("VPN proxy stop failed: " + t.toString());
+        }
+    }
+
+    private static void runScript(String path) throws Exception {
+        if (path == null || path.trim().length() == 0) {
+            throw new RuntimeException("VPN script path is empty.");
+        }
+        Process process = Runtime.getRuntime().exec(new String[] { "/bin/sh", path });
+        int code = process.waitFor();
+        if (code != 0) {
+            throw new RuntimeException("VPN script failed: " + path + " exit=" + code);
+        }
+    }
+
+    private static boolean isPortOpen(String host, int port, int timeoutMs) {
+        Socket socket = null;
+        try {
+            socket = new Socket();
+            socket.connect(new InetSocketAddress(host, port), timeoutMs);
+            return true;
+        } catch (Throwable ignored) {
+            return false;
+        } finally {
+            if (socket != null) {
+                try {
+                    socket.close();
+                } catch (Throwable ignored) {
+                    // Ignore close errors.
                 }
             }
         }
