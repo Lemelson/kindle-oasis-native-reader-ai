@@ -165,7 +165,7 @@ final class OpenRouterClient {
     }
 
     static HttpURLConnection openConnection(URL url, OpenRouterConfig config) throws Exception {
-        if (!config.vpnEnabled || !config.proxyReady) {
+        if (!config.vpnEnabled) {
             return (HttpURLConnection) url.openConnection();
         }
         Proxy proxy = new Proxy(
@@ -179,15 +179,13 @@ final class OpenRouterClient {
             return;
         }
         if (isPortOpen(config.vpnProxyHost, config.vpnProxyPort, 500)) {
-            config.proxyReady = true;
             return;
         }
         runScript(config.vpnStartScript);
         long deadline = System.currentTimeMillis() + VPN_READY_TIMEOUT_MS;
         while (System.currentTimeMillis() < deadline) {
             if (isPortOpen(config.vpnProxyHost, config.vpnProxyPort, 500)) {
-                config.proxyReady = true;
-                AiAssistantLog.write("VPN proxy ready on " + config.vpnProxyHost
+                AiAssistantLog.write("VPN tunnel ready on " + config.vpnProxyHost
                         + ":" + config.vpnProxyPort);
                 return;
             }
@@ -197,8 +195,9 @@ final class OpenRouterClient {
                 // Keep waiting until the timeout.
             }
         }
-        throw new RuntimeException("VPN proxy did not become ready on "
-                + config.vpnProxyHost + ":" + config.vpnProxyPort);
+        throw new RuntimeException("VPN (Xray) did not come up on "
+                + config.vpnProxyHost + ":" + config.vpnProxyPort
+                + ". Check the connection and try again.");
     }
 
     static void stopVpnProxy(OpenRouterConfig config) {

@@ -51,18 +51,10 @@ final class AiProviderChainClient {
         boolean vpnStarted = false;
         try {
             if (config.vpnEnabled) {
-                callback.onStatus("Starting VPN proxy for AI request...");
-                try {
-                    OpenRouterClient.ensureVpnProxy(config);
-                    vpnStarted = true;
-                    callback.onStatus("VPN proxy ready. Thinking:");
-                } catch (Throwable vpnError) {
-                    config.proxyReady = false;
-                    AiAssistantLog.write("VPN proxy unavailable, continuing without proxy: "
-                            + vpnError.toString());
-                    callback.onStatus("VPN proxy unavailable (" + shortReason(vpnError.toString())
-                            + ").\nTrying direct connection...");
-                }
+                callback.onStatus("Starting VPN...");
+                OpenRouterClient.ensureVpnProxy(config);
+                vpnStarted = true;
+                callback.onStatus("VPN ready. Thinking:");
             }
 
             if (proFirst) {

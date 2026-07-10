@@ -634,15 +634,19 @@ Built on v21. Changes:
   `TableOfContentsEntry.getLabel()`. Wrapped in try/catch; on any failure the
   prompt still says `unknown`. This uses the book's native TOC, so it works
   generically for any book that has chapters, with no per-book code.
-- VPN proxy startup is no longer fatal. Previously `runChain` called
-  `ensureVpnProxy` at the top and let a "VPN proxy did not become ready on
-  127.0.0.1:18080" exception abort the whole provider chain, so Gemini and the
-  OpenRouter fallbacks were never tried (observed on phone tethering). Now the
-  start attempt is wrapped: on failure it logs, shows "VPN proxy unavailable,
-  trying direct connection...", and continues. `OpenRouterConfig.proxyReady`
-  (transient, not read from properties) gates proxy use: `openConnection` routes
-  through the proxy only when `vpnEnabled && proxyReady`, so a failed proxy
-  cleanly degrades to a direct connection instead of dialing a dead port.
+- VPN error message clarified; there is no direct-connection fallback. The
+  "VPN" is Xray: `start-ai-vpn.sh` runs `xray run` with an HTTP inbound on
+  `127.0.0.1:18080` and a VLESS outbound abroad, so port 18080 is the local
+  entrance to the tunnel (this is what the code calls the "proxy" — same thing
+  as the VPN, not a separate hop). From Russia a direct request to
+  Gemini/OpenRouter is blocked, so falling back to a direct connection is
+  pointless. When the tunnel does not come up, the request now fails with a
+  clear message ("VPN (Xray) did not come up on 127.0.0.1:18080. Check the
+  connection and try again.") instead of the old "VPN proxy did not become
+  ready" wrapped as an "OpenRouter error". The generic error line in the AI card
+  changed from "OpenRouter error after retries:" to "AI request failed:" so a
+  VPN failure no longer reads as an OpenRouter failure. `openConnection` again
+  routes through the tunnel whenever `vpn_enabled=true`.
 - `max_tokens` default raised from 3000 to 5000 in `OpenRouterConfig` and in
   `ai-assistant.example.properties`. One knob feeds both the OpenRouter
   `max_tokens` and the Gemini `maxOutputTokens`. The on-device

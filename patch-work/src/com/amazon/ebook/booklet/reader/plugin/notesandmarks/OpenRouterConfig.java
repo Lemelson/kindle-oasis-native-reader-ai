@@ -24,7 +24,6 @@ final class OpenRouterConfig {
     String reasoningEffort = "high";
     boolean reasoningExclude = false;
     boolean vpnEnabled = false;
-    boolean proxyReady = false;
     String vpnProxyHost = "127.0.0.1";
     int vpnProxyPort = 18080;
     String vpnStartScript = "/mnt/us/native-reader-research/vpn/start-ai-vpn.sh";

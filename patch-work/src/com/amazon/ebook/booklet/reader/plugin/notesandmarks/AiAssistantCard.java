@@ -268,7 +268,7 @@ final class AiAssistantCard extends SelectionDialogCard {
                         public void run() {
                             updateStatus(key, requestId, withNotice(
                                     fallbackNotice[0],
-                                    "OpenRouter error after retries:\n" + message));
+                                    "AI request failed:\n" + message));
                         }
                     });
                 }
