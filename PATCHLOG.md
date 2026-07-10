@@ -612,3 +612,65 @@ Because USBNet was not reachable after the first reboot, a KUAL extension was ad
 - Action: `Rollback Translator Jar`
 
 The installers store pre-change backups, write `/mnt/us/native-reader-research/nativepatch.log`, and reboot. The reader rollback restores the original `Reader-plugin.jar.orig.20260504-013002` backup. The translator rollback restores `/mnt/us/native-reader-research/jars/translator.jar`. `Install stable Trans only` installs the working `Reader-plugin.v2.jar` while restoring the original `translator.jar`.
+
+## AI Note v22 Wiki, chapter context, VPN fix, larger max_tokens
+
+Built on v21. Changes:
+
+- Prompt buttons are now `Explain`, `Words`, `Wiki`, `Why`, `Deep`. The `Recall`
+  button is replaced by `Wiki`. `Wiki` is an encyclopedia-style identify mode:
+  it leads with real-world knowledge about a highlighted person, term, place,
+  event, work, or concept, and falls back to before-context only when the item
+  is specific to the book. This absorbs the old `Recall` use case (book-internal
+  referents) while covering the more common "who/what is this real thing"
+  intent for non-fiction reading. Output scaffold: `Что это / Кратко / Здесь`.
+- System prompt gains one non-fiction line: for a highlighted person, term,
+  place, event, work, or concept, answer like a short encyclopedia entry and do
+  not withhold public factual information as if it were a spoiler. The existing
+  narrative spoiler policy is unchanged.
+- Current chapter/section is now extracted from the book's own table of contents
+  instead of the hardcoded `unknown`. Path: `Book.mA()` (TableOfContents) →
+  `TableOfContents.f(Position)` (resolve the selection start to its entry) →
+  `TableOfContentsEntry.getLabel()`. Wrapped in try/catch; on any failure the
+  prompt still says `unknown`. This uses the book's native TOC, so it works
+  generically for any book that has chapters, with no per-book code.
+- VPN proxy startup is no longer fatal. Previously `runChain` called
+  `ensureVpnProxy` at the top and let a "VPN proxy did not become ready on
+  127.0.0.1:18080" exception abort the whole provider chain, so Gemini and the
+  OpenRouter fallbacks were never tried (observed on phone tethering). Now the
+  start attempt is wrapped: on failure it logs, shows "VPN proxy unavailable,
+  trying direct connection...", and continues. `OpenRouterConfig.proxyReady`
+  (transient, not read from properties) gates proxy use: `openConnection` routes
+  through the proxy only when `vpnEnabled && proxyReady`, so a failed proxy
+  cleanly degrades to a direct connection instead of dialing a dead port.
+- `max_tokens` default raised from 3000 to 5000 in `OpenRouterConfig` and in
+  `ai-assistant.example.properties`. One knob feeds both the OpenRouter
+  `max_tokens` and the Gemini `maxOutputTokens`. The on-device
+  `/mnt/us/native-reader-research/ai-assistant.properties` was updated to 5000.
+
+Build:
+
+```sh
+rm -rf patch-work/classes-ai-v22 patch-work/patched-ai-v22
+mkdir -p patch-work/classes-ai-v22
+CP=$(printf '%s:' from-kindle/native-reader-research/jars/*.jar)
+javac --release 8 -cp "$CP" -d patch-work/classes-ai-v22 \
+  $(find patch-work/stubs patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks -name '*.java' -print)
+python3 patch-work/scripts/build_ai_note_patch.py
+```
+
+Built artifact:
+
+- Mac artifact: `patch-work/patched-ai-v22/ReaderSDK-impl.ai-v22.jar`
+- SHA-256: `a052b8459fef79fa8887e4f6e61b21a833969d08a7c645cb55fdcea6bb55ebaf`
+
+KUAL install action (new menu entry, keeps v21 available for rollback):
+
+```text
+KUAL -> Native Reader Patch -> Install AI Note v22 Wiki + VPN fix
+```
+
+Device deployment (USB): jar copied to
+`/mnt/us/native-reader-research/patched/ReaderSDK-impl.ai-v22.jar`, install
+script to `/mnt/us/native-reader-research/extensions/nativepatch/bin/`, and the
+extension `menu.json` refreshed.

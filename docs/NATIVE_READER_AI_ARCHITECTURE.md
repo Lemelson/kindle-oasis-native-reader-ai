@@ -16,7 +16,7 @@ Most highlights happen for a few repeated reading reasons:
 The AI interface therefore uses universal reading intentions, not book genres:
 
 ```text
-Explain | Words | Recall | Why | Deep
+Explain | Words | Wiki | Why | Deep
 ```
 
 The model is expected to infer the text type and situation silently, then answer
@@ -67,7 +67,7 @@ The visible `Note` slot is replaced with the `AI` action.
 Current behavior:
 
 ```text
-select text -> AI -> embedded SelectionDialogCard with Explain / Words / Recall / Why / Deep
+select text -> AI -> embedded SelectionDialogCard with Explain / Words / Wiki / Why / Deep
 ```
 
 Short-tapping a mode sends the request immediately with `model`. Long-pressing
@@ -247,10 +247,12 @@ Use when the reader does not understand what the fragment means.
 Use when the wording, idiom, grammar, metaphor, tone, or structure is confusing.
 This is different from translation: it explains how the language works.
 
-`Recall`
+`Wiki`
 
-Use when the reader needs to remember who or what something refers to, or what
-background matters.
+Use when the reader highlights a person, term, place, event, work, or concept
+and wants a short encyclopedia-style answer. It leads with real-world knowledge
+and only falls back to before-context when the item is specific to the book.
+This replaces the earlier `Recall` mode and absorbs its book-internal use case.
 
 `Why`
 

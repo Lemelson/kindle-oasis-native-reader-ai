@@ -81,7 +81,7 @@ final class AiAssistantCard extends SelectionDialogCard {
         presets.setPreferredSize(new Dimension(10, BUTTON_HEIGHT));
         addPreset(presets, "Explain");
         addPreset(presets, "Words");
-        addPreset(presets, "Recall");
+        addPreset(presets, "Wiki");
         addPreset(presets, "Why");
         addPreset(presets, "Deep");
         add(presets, BorderLayout.NORTH);

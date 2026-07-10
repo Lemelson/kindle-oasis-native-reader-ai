@@ -19,11 +19,12 @@ final class OpenRouterConfig {
     String referer = "https://kindle.local/native-reader-ai";
     String title = "Kindle Native Reader AI";
     int timeoutMs = 45000;
-    int maxTokens = 3000;
+    int maxTokens = 5000;
     double temperature = 0.2d;
     String reasoningEffort = "high";
     boolean reasoningExclude = false;
     boolean vpnEnabled = false;
+    boolean proxyReady = false;
     String vpnProxyHost = "127.0.0.1";
     int vpnProxyPort = 18080;
     String vpnStartScript = "/mnt/us/native-reader-research/vpn/start-ai-vpn.sh";

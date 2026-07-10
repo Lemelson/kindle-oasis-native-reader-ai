@@ -11,7 +11,8 @@ reader modification:
 - The translation target is set to Russian by default.
 - The visible `Note` action is replaced with an `AI` action.
 - The `AI` action opens one embedded smart-card with prompt buttons at the top:
-  `Explain`, `Words`, `Recall`, `Why`, and `Deep`.
+  `Explain`, `Words`, `Wiki`, `Why`, and `Deep`. `Wiki` is an encyclopedia-style
+  identify mode for a highlighted person, term, place, event, work, or concept.
 - The AI card sends the selected text, book metadata, and surrounding context to
   OpenRouter using `deepseek/deepseek-v4-flash` by default.
 - A short tap on a prompt uses Flash; a long press uses DeepSeek V4 Pro.
@@ -21,7 +22,7 @@ reader modification:
 Current local git checkpoint:
 
 ```text
-current: AI Note v15 VPN proxy
+current: AI Note v22 Wiki + VPN fix
 ```
 
 ## Device State
@@ -62,7 +63,7 @@ select text -> Translate -> Amazon Translation card -> Russian target language
 AI assistant:
 
 ```text
-select text -> AI -> Explain / Words / Recall / Why / Deep
+select text -> AI -> Explain / Words / Wiki / Why / Deep
 ```
 
 The AI card starts with an empty output area. Short-tapping a mode starts a
@@ -97,8 +98,8 @@ docs/
 Current AI jar:
 
 ```text
-patch-work/patched-ai-v21/ReaderSDK-impl.ai-v21.jar
-SHA-256: 203ed993deb039967d3c700c87b3e2966aaddccc7968a78f1f8977d68e06e3ec
+patch-work/patched-ai-v22/ReaderSDK-impl.ai-v22.jar
+SHA-256: a052b8459fef79fa8887e4f6e61b21a833969d08a7c645cb55fdcea6bb55ebaf
 
 patch-work/patched-v3/Reader-plugin.jar
 SHA-256: d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907
@@ -107,7 +108,7 @@ SHA-256: d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907
 Current KUAL install action:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v21 Gemini Quota
+KUAL -> Native Reader Patch -> Install AI Note v22 Wiki + VPN fix
 ```
 
 Use `Enable AI Diagnostics` before a provider routing test. In diagnostics

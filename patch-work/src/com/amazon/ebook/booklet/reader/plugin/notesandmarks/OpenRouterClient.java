@@ -165,7 +165,7 @@ final class OpenRouterClient {
     }
 
     static HttpURLConnection openConnection(URL url, OpenRouterConfig config) throws Exception {
-        if (!config.vpnEnabled) {
+        if (!config.vpnEnabled || !config.proxyReady) {
             return (HttpURLConnection) url.openConnection();
         }
         Proxy proxy = new Proxy(
@@ -179,12 +179,14 @@ final class OpenRouterClient {
             return;
         }
         if (isPortOpen(config.vpnProxyHost, config.vpnProxyPort, 500)) {
+            config.proxyReady = true;
             return;
         }
         runScript(config.vpnStartScript);
         long deadline = System.currentTimeMillis() + VPN_READY_TIMEOUT_MS;
         while (System.currentTimeMillis() < deadline) {
             if (isPortOpen(config.vpnProxyHost, config.vpnProxyPort, 500)) {
+                config.proxyReady = true;
                 AiAssistantLog.write("VPN proxy ready on " + config.vpnProxyHost
                         + ":" + config.vpnProxyPort);
                 return;
@@ -343,6 +345,9 @@ final class OpenRouterClient {
         return "You are a spoiler-safe reading assistant running on a Kindle.\n\n"
                 + "The user is a Russian-speaking reader, often reading English books to improve English. "
                 + "Always answer in Russian.\n\n"
+                + "The user reads mostly non-fiction. When the highlighted item is a person, term, place, "
+                + "event, work, or concept, answer like a short encyclopedia entry using real-world "
+                + "knowledge, and do not withhold public factual information as if it were a spoiler.\n\n"
                 + "Your job is to explain the selected fragment, not the whole context. Use the book "
                 + "metadata and surrounding context to infer the text type, situation, speaker, argument, "
                 + "tone, and likely reason the user selected the fragment.\n\n"

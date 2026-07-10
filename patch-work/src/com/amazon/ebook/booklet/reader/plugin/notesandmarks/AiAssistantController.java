@@ -5,6 +5,8 @@ import com.amazon.ebook.booklet.reader.sdk.ReaderSDK;
 import com.amazon.ebook.booklet.reader.sdk.content.Book;
 import com.amazon.ebook.booklet.reader.sdk.content.BookMetadata;
 import com.amazon.ebook.booklet.reader.sdk.content.Position;
+import com.amazon.ebook.booklet.reader.sdk.content.TableOfContents;
+import com.amazon.ebook.booklet.reader.sdk.content.TableOfContentsEntry;
 import com.amazon.ebook.booklet.reader.sdk.content.WordEntry;
 import com.amazon.ebook.booklet.reader.sdk.content.WordIterator;
 import com.amazon.ebook.booklet.reader.sdk.ui.SelectionDialog;
@@ -175,24 +177,27 @@ final class AiAssistantController {
                     + "Смысл: [natural Russian meaning]\n"
                     + "Язык: [why the wording means this / what nuance it carries]";
         }
-        if ("Recall".equals(promptName)) {
+        if ("Wiki".equals(promptName)) {
             return "Reader intention:\n"
-                    + "I need to remember who or what this refers to, or what background is needed.\n\n"
+                    + "I highlighted a name, term, place, event, work, or concept, often one I am "
+                    + "meeting for the first time, and I want to know what or who it is, like a short "
+                    + "encyclopedia entry.\n\n"
                     + "Task:\n"
-                    + "Explain what the reader should remember to understand the selected fragment.\n\n"
-                    + "Use BEFORE_CONTEXT first. If the needed information is not present, use safe public "
-                    + "background or book metadata only when helpful.\n\n"
-                    + "For fiction, memoir, narrative biography, mystery, classics, or chronological works:\n"
-                    + "- Remind only what the reader should know at this point.\n"
-                    + "- Do not reveal future role, fate, twist, ending, later scene, or later explanation.\n"
-                    + "- If uncertain whether something has already appeared before this point, say so cautiously.\n\n"
-                    + "For nonfiction, philosophy, history, biography, or essays:\n"
-                    + "- Identify the concept, person, event, school of thought, argument, or reference.\n"
-                    + "- Explain why it matters in this immediate passage.\n\n"
-                    + "If there is no special background to remember, explain the immediate meaning instead.\n\n"
+                    + "Identify the highlighted item and explain it using real-world knowledge.\n\n"
+                    + "- Lead with world knowledge: who the person is, what the event, place, work, or "
+                    + "concept is. Add concrete anchors (dates, field, role, nationality) when relevant.\n"
+                    + "- If the item is specific to this book (a term the author coined, a person or case "
+                    + "introduced earlier), identify it from BEFORE_CONTEXT and say it comes from the book.\n"
+                    + "- Stay factual and neutral. If the exact referent is unclear, name the most likely "
+                    + "one and say so briefly.\n"
+                    + "- Explain the item itself, not the meaning of the surrounding sentence.\n\n"
+                    + "For fiction, memoir, mystery, classics, or other plot-driven works:\n"
+                    + "- Explain only what is safe to know at this point in the book.\n"
+                    + "- Do not reveal a real or fictional figure's later role, fate, or a later twist.\n\n"
                     + "Output:\n"
-                    + "Нужно вспомнить: [relevant memory/background]\n"
-                    + "Почему это важно здесь: [why it matters for this fragment]";
+                    + "Что это: [one line: who or what, with a concrete anchor if relevant]\n"
+                    + "Кратко: [2-4 sentence encyclopedic summary]\n"
+                    + "Здесь: [one line: why it comes up in this passage]";
         }
         if ("Why".equals(promptName)) {
             return "Reader intention:\n"
@@ -266,7 +271,11 @@ final class AiAssistantController {
         appendLine(prompt, "Book language", selection.language);
         appendLine(prompt, "Start position", selection.startPosition);
         appendLine(prompt, "End position", selection.endPosition);
-        prompt.append("Current chapter or section: unknown\n");
+        if (selection.chapter != null && selection.chapter.length() > 0) {
+            appendLine(prompt, "Current chapter or section", selection.chapter);
+        } else {
+            prompt.append("Current chapter or section: unknown\n");
+        }
         prompt.append("</book_metadata>\n\n");
 
         prompt.append("<reader_progress_policy>\n");
@@ -328,8 +337,8 @@ final class AiAssistantController {
         if ("Words".equals(modeName)) {
             return "The wording, idiom, grammar, metaphor, tone, or phrase structure confused me.";
         }
-        if ("Recall".equals(modeName)) {
-            return "I need to remember who or what this refers to, or what background is needed.";
+        if ("Wiki".equals(modeName)) {
+            return "I want to know who or what the highlighted item is, like a short encyclopedia entry.";
         }
         if ("Why".equals(modeName)) {
             return "I understand the words, but I do not understand why this fragment matters here.";
@@ -355,6 +364,7 @@ final class AiAssistantController {
         String language;
         String startPosition;
         String endPosition;
+        String chapter;
 
         boolean hasText() {
             return selectedText != null && selectedText.trim().length() > 0;
@@ -392,10 +402,35 @@ final class AiAssistantController {
                     data.authors = safe(metadata.getAuthors());
                     data.language = safe(metadata.eU(true));
                 }
+
+                data.chapter = currentChapter(book, start);
             } catch (Throwable t) {
                 AiAssistantLog.write("selection capture failed: " + t.toString());
             }
             return data;
+        }
+
+        private static String currentChapter(Book book, Position anchor) {
+            try {
+                if (book == null || anchor == null) {
+                    return "";
+                }
+                TableOfContents toc = book.mA();
+                if (toc == null) {
+                    return "";
+                }
+                TableOfContentsEntry entry = toc.f(anchor);
+                if (entry == null) {
+                    return "";
+                }
+                String label = entry.getLabel();
+                AiAssistantLog.write("chapter resolved="
+                        + (label == null ? "" : label.trim()));
+                return label == null ? "" : label.trim();
+            } catch (Throwable t) {
+                AiAssistantLog.write("chapter lookup failed: " + t.toString());
+                return "";
+            }
         }
 
         private static String contextText(

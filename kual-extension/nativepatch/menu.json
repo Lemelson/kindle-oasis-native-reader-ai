@@ -143,44 +143,50 @@
           "exitmenu": true
         },
         {
-          "name": "Start AI VPN Proxy",
+          "name": "Install AI Note v22 Wiki + VPN fix",
           "priority": 24,
+          "action": "./bin/install-ai-note-v22.sh",
+          "exitmenu": true
+        },
+        {
+          "name": "Start AI VPN Proxy",
+          "priority": 25,
           "action": "./bin/start-ai-vpn.sh",
           "exitmenu": true
         },
         {
           "name": "Stop AI VPN Proxy",
-          "priority": 25,
+          "priority": 26,
           "action": "./bin/stop-ai-vpn.sh",
           "exitmenu": true
         },
         {
           "name": "Enable AI Diagnostics",
-          "priority": 26,
+          "priority": 27,
           "action": "./bin/enable-ai-diagnostics.sh",
           "exitmenu": true
         },
         {
           "name": "Disable AI Diagnostics",
-          "priority": 27,
+          "priority": 28,
           "action": "./bin/disable-ai-diagnostics.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback Reader Plugin",
-          "priority": 28,
+          "priority": 29,
           "action": "./bin/rollback.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback AI Note Patch",
-          "priority": 29,
+          "priority": 30,
           "action": "./bin/rollback-ai.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback Translator Jar",
-          "priority": 30,
+          "priority": 31,
           "action": "./bin/rollback-translator.sh",
           "exitmenu": true
         }
