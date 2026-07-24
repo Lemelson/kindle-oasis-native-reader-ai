@@ -143,3 +143,4 @@ More detail:
 - [Jailbreak and device setup](docs/JAILBREAK_AND_DEVICE_SETUP.md)
 - [Native reader AI architecture](docs/NATIVE_READER_AI_ARCHITECTURE.md)
 - [Operations and rollback](docs/OPERATIONS_AND_ROLLBACK.md)
+- [Device cleanup on 2026-07-24](docs/DEVICE_CLEANUP_2026-07-24.md)
