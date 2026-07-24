@@ -678,3 +678,70 @@ Device deployment (USB): jar copied to
 `/mnt/us/native-reader-research/patched/ReaderSDK-impl.ai-v22.jar`, install
 script to `/mnt/us/native-reader-research/extensions/nativepatch/bin/`, and the
 extension `menu.json` refreshed.
+
+## AI Note v23 Gemini 3.6 Flash
+
+Built on v22. Changes:
+
+- replaces the Gemini model ID `gemini-3.5-flash` with the stable
+  `gemini-3.6-flash`
+- updates Gemini provider-chain status text, persisted response labels, and
+  connectivity-diagnostics labels to `Gemini 3.6 Flash`
+- migrates the on-device `gemini_models` property during v23 installation and
+  backs up the previous config first
+- keeps `thinkingLevel=medium`, the existing quota rotation, retry order, VPN
+  lifecycle, prompts, and DeepSeek fallbacks unchanged
+- adds a separate v23 KUAL installer while keeping v22 available for rollback
+
+Build:
+
+```sh
+rm -rf patch-work/classes-ai-v23 patch-work/patched-ai-v23
+mkdir -p patch-work/classes-ai-v23
+CP=$(printf '%s:' from-kindle/native-reader-research/jars/*.jar)
+javac --release 8 -cp "$CP" -d patch-work/classes-ai-v23 \
+  $(find patch-work/stubs patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks -name '*.java' -print)
+python3 patch-work/scripts/build_ai_note_patch.py
+```
+
+Built artifact:
+
+- Mac artifact: `patch-work/patched-ai-v23/ReaderSDK-impl.ai-v23.jar`
+- SHA-256: `f8389a2526a6a7f4a75cd0e14c6e5248d3cffdeb8c18303842526e2a39c184ae`
+
+KUAL install action:
+
+```text
+KUAL -> Native Reader Patch -> Install AI Note v23 Gemini 3.6
+```
+
+Device deployment: intentionally deferred. No v23 files were copied to the
+mounted Kindle.
+
+## AI Note v24 Gemini streaming, one-tap start, and VPN reliability
+
+Built on the uninstalled v23 source. Changes:
+
+- keeps `gemini-3.6-flash` and raises `thinkingLevel` from `medium` to `high`
+- raises the shared output limit from `5000` to `6750` tokens (exactly 1.35x);
+  the same value feeds Gemini `maxOutputTokens` and OpenRouter `max_tokens`
+- switches Gemini from `generateContent` to
+  `streamGenerateContent?alt=sse`, forwarding final-answer chunks to the
+  existing throttled e-ink UI while filtering any response part marked
+  `thought=true`
+- automatically starts the normal `Explain` request after the AI card opens,
+  reducing the normal selection workflow to one tap on `AI`
+- disables preset buttons while a request is active, preventing concurrent
+  requests from racing the shared Xray process
+- removes the `netstat` readiness shortcut that could mistake a `TIME_WAIT`
+  socket for a live proxy; an existing managed but unready Xray process is
+  terminated and restarted, with a bounded wait and forced-stop fallback
+- keeps only current v22, candidate v24, diagnostics, VPN, stable translation,
+  and rollback actions in the KUAL menu
+
+Device deployment: intentionally deferred. v22 remains installed.
+
+Built artifact:
+
+- Mac artifact: `patch-work/patched-ai-v24/ReaderSDK-impl.ai-v24.jar`
+- SHA-256: `71e879929c7c49a09cc83bfaad082c219caecb0c491ceabd6dcb200102ab9647`

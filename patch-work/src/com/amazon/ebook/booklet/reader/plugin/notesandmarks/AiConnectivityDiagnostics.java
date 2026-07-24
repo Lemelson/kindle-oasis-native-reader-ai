@@ -241,8 +241,8 @@ final class AiConnectivityDiagnostics {
     }
 
     private static String modelLabel(String model) {
-        if ("gemini-3.5-flash".equals(model)) {
-            return "Gemini 3.5 Flash (" + model + ")";
+        if ("gemini-3.6-flash".equals(model)) {
+            return "Gemini 3.6 Flash (" + model + ")";
         }
         return model;
     }

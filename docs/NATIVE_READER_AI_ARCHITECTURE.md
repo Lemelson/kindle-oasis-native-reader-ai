@@ -34,7 +34,7 @@ Reader-plugin.jar
 
 ReaderSDK-impl.jar
     AI smart-card patch. Replaces the Note action with AI and implements the
-    OpenRouter integration.
+    Gemini/OpenRouter provider chain.
 ```
 
 The translator jar is kept original in the stable working path. Instead of
@@ -67,12 +67,13 @@ The visible `Note` slot is replaced with the `AI` action.
 Current behavior:
 
 ```text
-select text -> AI -> embedded SelectionDialogCard with Explain / Words / Wiki / Why / Deep
+select text -> AI -> embedded card -> Explain starts automatically
 ```
 
-Short-tapping a mode sends the request immediately with `model`. Long-pressing
-a mode for about 800 ms sends the request with `pro_model` instead and shows an
-immediate Pro status line in the lower output area.
+Opening the card starts `Explain` with Gemini 3.6 Flash, making the normal path
+one tap. After the active request finishes, short-tapping another mode uses the
+normal Gemini-first chain. Long-pressing a mode for about 800 ms starts with
+`pro_model` instead. Buttons are disabled while a request is active.
 
 The card is not a separate fullscreen application. It opens through the same
 native smart-card path used by other Kindle reader cards.
@@ -114,7 +115,7 @@ This is meant to reduce spoiler risk in chronological or plot-driven books.
 If context extraction fails, the prompt still includes the selected fragment and
 marks the missing side as unavailable.
 
-## OpenRouter Configuration
+## Provider Configuration
 
 Configuration path on Kindle:
 
@@ -130,14 +131,18 @@ pro_model=deepseek/deepseek-v4-pro
 pro_fallback_model=xiaomi/mimo-v2.5-pro
 base_url=https://openrouter.ai/api/v1/chat/completions
 temperature=0.2
-max_tokens=3000
+max_tokens=6750
 timeout_ms=45000
 reasoning_effort=high
 reasoning_exclude=false
+gemini_models=gemini-3.6-flash
+gemini_thinking_level=high
 ```
 
-`reasoning_exclude=false` is intentional because we want streaming
-reasoning text to appear while the model is thinking.
+The shared `max_tokens` value is sent as OpenRouter `max_tokens` and Gemini
+`maxOutputTokens`. Gemini thinking is internal and not displayed. OpenRouter
+reasoning remains visible when a fallback is used and
+`reasoning_exclude=false`.
 
 For a quieter production build, set:
 
@@ -166,7 +171,7 @@ The current OpenRouter request uses:
     { "role": "user", "content": "..." }
   ],
   "temperature": 0.2,
-  "max_tokens": 3000,
+  "max_tokens": 6750,
   "stream": true
 }
 ```
@@ -177,42 +182,40 @@ patch and shown in the UI.
 
 ## Retry And Fallback
 
-Each primary request gets up to 6 attempts. Retry delays are:
+Normal tap order:
 
 ```text
-0.5s, 0.5s, 0.5s, 2s, 2s
+Gemini 3.6 Flash: up to 4 attempts
+DeepSeek V4 Pro: up to 5 attempts
 ```
 
-If all Flash attempts fail, the client performs 3 final fallback attempts with
-`pro_model`, delayed 2 seconds each.
+Long-press order:
 
-If all Pro attempts fail, the client first performs 4 extra attempts with
-`pro_model`, delayed 2 seconds each. If those also fail, the client performs 3
-final fallback attempts with `pro_fallback_model` (`xiaomi/mimo-v2.5-pro` by
-default), also delayed 2 seconds each.
+```text
+DeepSeek V4 Pro: up to 5 attempts
+Gemini 3.6 Flash: up to 4 attempts
+DeepSeek V4 Flash: up to 4 attempts
+```
 
-The response view keeps a visible line such as
-`Extra retry with DeepSeek V4 Pro (...)`,
-`Final fallback retry with DeepSeek V4 Pro (...)`, or
-`Final fallback retry with Xiaomi MiMo V2.5 Pro (...)`.
+Retry/fallback status remains visible in the card.
 
 ## Streaming Behavior
 
 The current build uses `HttpURLConnection` and reads Server-Sent Events from
-OpenRouter.
+both Gemini `streamGenerateContent` and OpenRouter.
 
 Expected stream order from testing:
 
 ```text
-reasoning chunks first
-content chunks after reasoning
+Gemini: final-answer chunks only
+OpenRouter: reasoning chunks, then content chunks
 ```
 
 UI behavior:
 
-1. Show `Thinking:` while reasoning text streams.
-2. When final content starts, clear the thinking view.
-3. Stream the final answer directly, without a `Final answer:` prefix.
+1. Show provider/retry status while waiting for final output.
+2. Stream final-answer chunks directly, without a `Final answer:` prefix.
+3. Throttle e-ink text updates to at most once every 1.5 seconds.
 4. Cache the completed final answer for the selected mode and selection.
 5. Render the completed answer with the safe Markdown subset.
 
@@ -268,9 +271,7 @@ difficult. This mode allows a longer and deeper answer.
 
 - v14 keeps the v11-style embedded AI card because it is clearer on-device than
   the v12 action row and v13 popup-menu experiments.
-- The streaming path is still riskier than v8/v9 because it uses direct
-  `HttpURLConnection` streaming instead of Amazon's internal HTTP helper.
-- Showing reasoning is useful for experimentation, but it can be noisy and may
-  expose model scratch work that is not meant as the final answer.
-- For day-to-day reading, a hidden-reasoning build may be calmer:
-  `reasoning_exclude=true`.
+- The streaming path uses direct `HttpURLConnection` rather than Amazon's
+  internal HTTP helper, so device runtime testing remains required.
+- Gemini thoughts stay hidden. OpenRouter reasoning can still be noisy when a
+  fallback is used; set `reasoning_exclude=true` to hide it.

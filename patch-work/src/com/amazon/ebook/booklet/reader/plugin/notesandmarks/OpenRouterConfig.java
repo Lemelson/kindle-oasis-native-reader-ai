@@ -19,7 +19,7 @@ final class OpenRouterConfig {
     String referer = "https://kindle.local/native-reader-ai";
     String title = "Kindle Native Reader AI";
     int timeoutMs = 45000;
-    int maxTokens = 5000;
+    int maxTokens = 6750;
     double temperature = 0.2d;
     String reasoningEffort = "high";
     boolean reasoningExclude = false;
@@ -32,8 +32,8 @@ final class OpenRouterConfig {
     String geminiApiKey = "";
     String geminiApiKeys = "";
     String geminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta";
-    String geminiModels = "gemini-3.5-flash";
-    String geminiThinkingLevel = "medium";
+    String geminiModels = "gemini-3.6-flash";
+    String geminiThinkingLevel = "high";
     int geminiDailyRequestLimit = 20;
     long geminiQuotaWindowMs = 86400000L;
     long geminiQuotaCooldownMs = 3600000L;

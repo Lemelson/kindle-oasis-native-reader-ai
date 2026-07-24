@@ -12,7 +12,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -34,15 +36,22 @@ final class AiAssistantCard extends SelectionDialogCard {
     private final Map cachedResponses = new HashMap();
     private final Map statusTexts = new HashMap();
     private final Map requestIds = new HashMap();
+    private final List presetButtons = new ArrayList();
     private JTextArea output;
     private String activeMode = "";
     private String activeKey = "";
     private int requestSerial = 0;
+    private boolean requestRunning = false;
 
     AiAssistantCard(ReaderSDK sdk, AiAssistantController.SelectionData selection) {
         this.sdk = sdk;
         this.selection = selection;
         buildUi();
+        sdk.invokeLater(new Runnable() {
+            public void run() {
+                selectPreset("Explain", false);
+            }
+        });
     }
 
     public String anL() {
@@ -132,6 +141,7 @@ final class AiAssistantCard extends SelectionDialogCard {
                 }
             }
         });
+        presetButtons.add(button);
         panel.add(button);
     }
 
@@ -143,6 +153,9 @@ final class AiAssistantCard extends SelectionDialogCard {
     }
 
     private void selectPreset(String name, boolean useProModel) {
+        if (requestRunning) {
+            return;
+        }
         String key = modeKey(name, useProModel);
         boolean sameMode = key.equals(activeKey);
         activeMode = name;
@@ -167,6 +180,7 @@ final class AiAssistantCard extends SelectionDialogCard {
     private void runPrompt(final String name, String instruction, boolean useProModel) {
         final String key = modeKey(name, useProModel);
         final int requestId = nextRequestId(key);
+        setRequestRunning(true);
         try {
             AiAssistantLog.write("prompt start name=" + name
                     + " modelTier=" + (useProModel ? "pro" : "flash"));
@@ -179,6 +193,9 @@ final class AiAssistantCard extends SelectionDialogCard {
                         sdk.invokeLater(new Runnable() {
                             public void run() {
                                 updateStatus(key, requestId, text);
+                                if (text != null && text.indexOf("\nDone.") >= 0) {
+                                    finishRequest(key, requestId);
+                                }
                             }
                         });
                     }
@@ -188,6 +205,7 @@ final class AiAssistantCard extends SelectionDialogCard {
             if (!config.isUsable()) {
                 updateStatus(key, requestId,
                         "OpenRouter config missing.\nCheck /mnt/us/native-reader-research/ai-assistant.properties");
+                finishRequest(key, requestId);
                 return;
             }
 
@@ -202,6 +220,13 @@ final class AiAssistantCard extends SelectionDialogCard {
                 public void onStatus(final String message) {
                     sdk.invokeLater(new Runnable() {
                         public void run() {
+                            if (content.length() > 0 && message != null
+                                    && message.indexOf("attempt") >= 0) {
+                                content.setLength(0);
+                                thinking.setLength(0);
+                                lastContentUpdateMs[0] = 0L;
+                                lastThinkingUpdateMs[0] = 0L;
+                            }
                             String notice = fallbackNotice(message);
                             if (notice.length() > 0) {
                                 fallbackNotice[0] = notice;
@@ -258,6 +283,7 @@ final class AiAssistantCard extends SelectionDialogCard {
                             if (key.equals(activeKey)) {
                                 setOutput(clean);
                             }
+                            finishRequest(key, requestId);
                         }
                     });
                 }
@@ -269,6 +295,7 @@ final class AiAssistantCard extends SelectionDialogCard {
                             updateStatus(key, requestId, withNotice(
                                     fallbackNotice[0],
                                     "AI request failed:\n" + message));
+                            finishRequest(key, requestId);
                         }
                     });
                 }
@@ -276,6 +303,21 @@ final class AiAssistantCard extends SelectionDialogCard {
         } catch (Throwable t) {
             AiAssistantLog.write("prompt failed name=" + name + " error=" + t.toString());
             updateStatus(key, requestId, "AI failed:\n" + t.toString());
+            finishRequest(key, requestId);
+        }
+    }
+
+    private void finishRequest(String key, int requestId) {
+        if (!isLatestRequest(key, requestId)) {
+            return;
+        }
+        setRequestRunning(false);
+    }
+
+    private void setRequestRunning(boolean running) {
+        requestRunning = running;
+        for (int i = 0; i < presetButtons.size(); i++) {
+            ((JButton) presetButtons.get(i)).setEnabled(!running);
         }
     }
 

@@ -15,7 +15,7 @@ If the Kindle is connected over USB, current artifacts live under:
 On Kindle, install through:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v15 VPN
+KUAL -> Native Reader Patch -> Install AI Note v24 streaming
 ```
 
 The installer:
@@ -50,7 +50,7 @@ pro_model=deepseek/deepseek-v4-pro
 pro_fallback_model=xiaomi/mimo-v2.5-pro
 base_url=https://openrouter.ai/api/v1/chat/completions
 temperature=0.2
-max_tokens=3000
+max_tokens=6750
 timeout_ms=45000
 reasoning_effort=high
 reasoning_exclude=false
@@ -64,8 +64,8 @@ diagnostic_attempts=2
 gemini_api_key=...
 gemini_api_keys=...
 gemini_base_url=https://generativelanguage.googleapis.com/v1beta
-gemini_models=gemini-3.5-flash
-gemini_thinking_level=medium
+gemini_models=gemini-3.6-flash
+gemini_thinking_level=high
 gemini_daily_request_limit=20
 gemini_quota_window_ms=86400000
 gemini_quota_cooldown_ms=3600000
@@ -175,10 +175,10 @@ reset can remove documents and homebrew launchers.
 The AI jar is built with:
 
 ```sh
-rm -rf patch-work/classes-ai-v21 patch-work/patched-ai-v21
-mkdir -p patch-work/classes-ai-v21
+rm -rf patch-work/classes-ai-v23 patch-work/patched-ai-v23
+mkdir -p patch-work/classes-ai-v23
 CP=$(printf '%s:' from-kindle/native-reader-research/jars/*.jar)
-javac --release 8 -cp "$CP" -d patch-work/classes-ai-v21 \
+javac --release 8 -cp "$CP" -d patch-work/classes-ai-v23 \
   $(find patch-work/stubs patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks -name '*.java' -print)
 python3 patch-work/scripts/build_ai_note_patch.py
 ```

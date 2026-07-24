@@ -309,6 +309,14 @@ final class OpenRouterClient {
         return result;
     }
 
+    static String readContentEventStream(InputStream input, Callback callback) throws Exception {
+        StreamResult result = readEventStream(input, callback);
+        if (result.error != null && result.error.length() > 0) {
+            throw new RuntimeException(result.error);
+        }
+        return result.content.toString();
+    }
+
     private static String buildPayload(OpenRouterConfig config, String userPrompt) {
         StringBuffer json = new StringBuffer();
         json.append('{');

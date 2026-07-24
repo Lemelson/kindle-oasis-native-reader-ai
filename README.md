@@ -14,15 +14,17 @@ reader modification:
   `Explain`, `Words`, `Wiki`, `Why`, and `Deep`. `Wiki` is an encyclopedia-style
   identify mode for a highlighted person, term, place, event, work, or concept.
 - The AI card sends the selected text, book metadata, and surrounding context to
-  OpenRouter using `deepseek/deepseek-v4-flash` by default.
+  Gemini using `gemini-3.6-flash` first, with DeepSeek fallbacks.
 - A short tap on a prompt uses Flash; a long press uses DeepSeek V4 Pro.
-- The current build streams model reasoning/status, retry/fallback notices, and
-  the final answer in the same lower output area.
+- Opening the AI card immediately starts `Explain`, so the normal path is one
+  tap on `AI`. Other modes remain available after the active request finishes.
+- Gemini streams only final-answer chunks into the card. Hidden Gemini thinking
+  stays hidden; status and fallback notices remain visible.
 
 Current local git checkpoint:
 
 ```text
-current: AI Note v22 Wiki + VPN fix
+current: AI Note v24 Gemini streaming + reliable VPN lifecycle
 ```
 
 ## Device State
@@ -63,12 +65,13 @@ select text -> Translate -> Amazon Translation card -> Russian target language
 AI assistant:
 
 ```text
-select text -> AI -> Explain / Words / Wiki / Why / Deep
+select text -> AI -> Explain starts automatically
 ```
 
-The AI card starts with an empty output area. Short-tapping a mode starts a
-Flash request immediately. Long-pressing a mode for about 0.8 seconds starts a
-DeepSeek V4 Pro request instead.
+The AI card automatically starts the normal Flash `Explain` request. After it
+finishes, short-tapping another mode starts Flash and long-pressing a mode for
+about 0.8 seconds starts DeepSeek V4 Pro. Buttons are disabled while a request
+is active so concurrent taps cannot race the shared VPN lifecycle.
 
 ## Repository Layout
 
@@ -98,8 +101,8 @@ docs/
 Current AI jar:
 
 ```text
-patch-work/patched-ai-v22/ReaderSDK-impl.ai-v22.jar
-SHA-256: a052b8459fef79fa8887e4f6e61b21a833969d08a7c645cb55fdcea6bb55ebaf
+patch-work/patched-ai-v24/ReaderSDK-impl.ai-v24.jar
+SHA-256: 71e879929c7c49a09cc83bfaad082c219caecb0c491ceabd6dcb200102ab9647
 
 patch-work/patched-v3/Reader-plugin.jar
 SHA-256: d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907
@@ -108,7 +111,7 @@ SHA-256: d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907
 Current KUAL install action:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v22 Wiki + VPN fix
+KUAL -> Native Reader Patch -> Install AI Note v24 streaming
 ```
 
 Use `Enable AI Diagnostics` before a provider routing test. In diagnostics
@@ -131,8 +134,9 @@ KUAL -> Native Reader Patch -> Rollback AI Note Patch
 - We did not prove or document Nosebleed internals beyond the public jailbreak
   workflow. Treat exploit mechanism details such as memory corruption claims as
   external research unless verified from primary sources.
-- We did not push this repository to GitHub from this environment. There is no
-  configured git remote at the time of writing; commits are local.
+- Generated JARs, original Amazon JARs, API keys, and the private Xray/VLESS
+  configuration are intentionally excluded from Git. The source history,
+  installers, patch documentation, and reproducible build tooling are tracked.
 
 More detail:
 

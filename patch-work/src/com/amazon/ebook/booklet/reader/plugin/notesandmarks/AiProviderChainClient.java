@@ -1,9 +1,12 @@
 package com.amazon.ebook.booklet.reader.plugin.notesandmarks;
 
 import com.amazon.ebook.booklet.reader.sdk.ReaderSDK;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
@@ -20,6 +23,7 @@ final class AiProviderChainClient {
     private static final int GEMINI_ATTEMPTS = 4;
     private static final int OPENROUTER_PRO_ATTEMPTS = 5;
     private static final int OPENROUTER_FLASH_ATTEMPTS = 4;
+    private static final Object REQUEST_LOCK = new Object();
 
     private AiProviderChainClient() { }
 
@@ -31,7 +35,9 @@ final class AiProviderChainClient {
             final OpenRouterClient.Callback callback) {
         Thread thread = new Thread(new Runnable() {
             public void run() {
-                runChain(config, userPrompt, proFirst, callback);
+                synchronized (REQUEST_LOCK) {
+                    runChain(config, userPrompt, proFirst, callback);
+                }
             }
         }, "AIAssistantProviderChain");
         try {
@@ -67,7 +73,7 @@ final class AiProviderChainClient {
                 }
                 if (tryGemini(config, userPrompt, callback,
                         GEMINI_ATTEMPTS,
-                        "Final fallback retry with Gemini 3.5 Flash",
+                        "Final fallback retry with Gemini 3.6 Flash",
                         false)) {
                     return;
                 }
@@ -83,7 +89,7 @@ final class AiProviderChainClient {
 
             if (tryGemini(config, userPrompt, callback,
                     GEMINI_ATTEMPTS,
-                    "Gemini 3.5 Flash",
+                    "Gemini 3.6 Flash",
                     false)) {
                 return;
             }
@@ -129,10 +135,10 @@ final class AiProviderChainClient {
             callback.onStatus(label + " attempt " + attempt + "/" + attempts
                     + " with key " + (keyIndex + 1) + "/" + keys.length + ".");
             try {
-                String text = sendGemini(config, userPrompt, keys[keyIndex]);
+                String text = sendGemini(config, userPrompt, keys[keyIndex], callback);
                 if (text != null && text.trim().length() > 0) {
                     quotaState.recordSuccess(keyIndex);
-                    AiAssistantLog.writeLastResponse("Gemini 3.5 Flash\n\n" + text);
+                    AiAssistantLog.writeLastResponse("Gemini 3.6 Flash\n\n" + text);
                     callback.onSuccess(text);
                     return true;
                 }
@@ -179,7 +185,7 @@ final class AiProviderChainClient {
             }
             callback.onStatus(label + " attempt " + attempt + "/" + attempts + ".");
             try {
-                String text = sendOpenRouter(config, userPrompt, model);
+                String text = sendOpenRouter(config, userPrompt, model, callback);
                 if (text != null && text.trim().length() > 0) {
                     AiAssistantLog.writeLastResponse(label + "\n\n" + text);
                     callback.onSuccess(text);
@@ -200,69 +206,140 @@ final class AiProviderChainClient {
         return false;
     }
 
-    private static String sendGemini(OpenRouterConfig config, String userPrompt, String key) throws Exception {
+    private static String sendGemini(
+            OpenRouterConfig config,
+            String userPrompt,
+            String key,
+            OpenRouterClient.Callback callback) throws Exception {
         if (key.length() == 0) {
             throw new RuntimeException("Gemini API key missing.");
         }
         String model = firstGeminiModel(config);
         String url = trimSlash(config.geminiBaseUrl) + "/models/" + model
-                + ":generateContent?key=" + java.net.URLEncoder.encode(key, "UTF-8");
+                + ":streamGenerateContent?alt=sse&key=" + java.net.URLEncoder.encode(key, "UTF-8");
         HttpURLConnection connection = OpenRouterClient.openConnection(new URL(url), config);
-        connection.setConnectTimeout(config.timeoutMs);
-        connection.setReadTimeout(config.timeoutMs);
-        connection.setRequestMethod("POST");
-        connection.setDoOutput(true);
-        connection.setRequestProperty("Content-Type", "application/json");
-        connection.setRequestProperty("Accept", "application/json");
-        byte[] body = geminiPayload(config, userPrompt).getBytes("UTF-8");
-        connection.setRequestProperty("Content-Length", String.valueOf(body.length));
-        OutputStream output = connection.getOutputStream();
         try {
-            output.write(body);
-            output.flush();
+            connection.setConnectTimeout(config.timeoutMs);
+            connection.setReadTimeout(config.timeoutMs);
+            connection.setRequestMethod("POST");
+            connection.setDoOutput(true);
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setRequestProperty("Accept", "text/event-stream");
+            byte[] body = geminiPayload(config, userPrompt).getBytes("UTF-8");
+            connection.setRequestProperty("Content-Length", String.valueOf(body.length));
+            OutputStream output = connection.getOutputStream();
+            try {
+                output.write(body);
+                output.flush();
+            } finally {
+                output.close();
+            }
+            int status = connection.getResponseCode();
+            if (status < 200 || status >= 300) {
+                String response = OpenRouterClient.readBody(connection.getErrorStream());
+                throw new GeminiProviderException(
+                        "Gemini HTTP " + status + ": " + shortReason(response),
+                        isQuotaLimited(status, response));
+            }
+            return readGeminiEventStream(connection.getInputStream(), callback);
         } finally {
-            output.close();
+            try {
+                connection.disconnect();
+            } catch (Throwable ignored) {
+                // Ignore disconnect errors.
+            }
         }
-        int status = connection.getResponseCode();
-        String response = OpenRouterClient.readBody(status >= 200 && status < 300
-                ? connection.getInputStream()
-                : connection.getErrorStream());
-        if (status < 200 || status >= 300) {
-            throw new GeminiProviderException(
-                    "Gemini HTTP " + status + ": " + shortReason(response),
-                    isQuotaLimited(status, response));
-        }
-        return geminiText(response);
     }
 
-    private static String sendOpenRouter(OpenRouterConfig config, String userPrompt, String model) throws Exception {
-        HttpURLConnection connection = OpenRouterClient.openConnection(new URL(config.baseUrl), config);
-        connection.setConnectTimeout(config.timeoutMs);
-        connection.setReadTimeout(config.timeoutMs);
-        connection.setRequestMethod("POST");
-        connection.setDoOutput(true);
-        connection.setRequestProperty("Authorization", "Bearer " + config.apiKey);
-        connection.setRequestProperty("Content-Type", "application/json");
-        connection.setRequestProperty("Accept", "application/json");
-        connection.setRequestProperty("HTTP-Referer", config.referer);
-        connection.setRequestProperty("X-Title", config.title);
-        byte[] body = openRouterPayload(config, userPrompt, model).getBytes("UTF-8");
-        connection.setRequestProperty("Content-Length", String.valueOf(body.length));
-        OutputStream output = connection.getOutputStream();
+    static String readGeminiEventStream(
+            InputStream input,
+            OpenRouterClient.Callback callback) throws Exception {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(input, "UTF-8"));
+        StringBuffer answer = new StringBuffer();
+        StringBuffer eventData = new StringBuffer();
         try {
-            output.write(body);
-            output.flush();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.length() == 0) {
+                    appendGeminiEvent(eventData, answer, callback);
+                    eventData.setLength(0);
+                    continue;
+                }
+                if (line.startsWith("data:")) {
+                    String data = line.substring(5);
+                    if (data.startsWith(" ")) {
+                        data = data.substring(1);
+                    }
+                    if (eventData.length() > 0) {
+                        eventData.append('\n');
+                    }
+                    eventData.append(data);
+                }
+            }
+            appendGeminiEvent(eventData, answer, callback);
         } finally {
-            output.close();
+            try {
+                reader.close();
+            } catch (Throwable ignored) {
+                // Ignore close errors.
+            }
         }
-        int status = connection.getResponseCode();
-        String response = OpenRouterClient.readBody(status >= 200 && status < 300
-                ? connection.getInputStream()
-                : connection.getErrorStream());
-        if (status < 200 || status >= 300) {
-            throw new RuntimeException("OpenRouter HTTP " + status + ": " + shortReason(response));
+        AiAssistantLog.write("Gemini stream complete content=" + answer.length());
+        return answer.toString();
+    }
+
+    private static void appendGeminiEvent(
+            StringBuffer eventData,
+            StringBuffer answer,
+            OpenRouterClient.Callback callback) throws Exception {
+        if (eventData.length() == 0 || "[DONE]".equals(eventData.toString())) {
+            return;
         }
-        return openRouterText(response);
+        String text = geminiText(eventData.toString());
+        if (text.length() > 0) {
+            answer.append(text);
+            callback.onContent(text);
+        }
+    }
+
+    private static String sendOpenRouter(
+            OpenRouterConfig config,
+            String userPrompt,
+            String model,
+            OpenRouterClient.Callback callback) throws Exception {
+        HttpURLConnection connection = OpenRouterClient.openConnection(new URL(config.baseUrl), config);
+        try {
+            connection.setConnectTimeout(config.timeoutMs);
+            connection.setReadTimeout(config.timeoutMs);
+            connection.setRequestMethod("POST");
+            connection.setDoOutput(true);
+            connection.setRequestProperty("Authorization", "Bearer " + config.apiKey);
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setRequestProperty("Accept", "text/event-stream");
+            connection.setRequestProperty("HTTP-Referer", config.referer);
+            connection.setRequestProperty("X-Title", config.title);
+            byte[] body = openRouterPayload(config, userPrompt, model).getBytes("UTF-8");
+            connection.setRequestProperty("Content-Length", String.valueOf(body.length));
+            OutputStream output = connection.getOutputStream();
+            try {
+                output.write(body);
+                output.flush();
+            } finally {
+                output.close();
+            }
+            int status = connection.getResponseCode();
+            if (status < 200 || status >= 300) {
+                String response = OpenRouterClient.readBody(connection.getErrorStream());
+                throw new RuntimeException("OpenRouter HTTP " + status + ": " + shortReason(response));
+            }
+            return OpenRouterClient.readContentEventStream(connection.getInputStream(), callback);
+        } finally {
+            try {
+                connection.disconnect();
+            } catch (Throwable ignored) {
+                // Ignore disconnect errors.
+            }
+        }
     }
 
     private static String geminiPayload(OpenRouterConfig config, String userPrompt) {
@@ -306,7 +383,7 @@ final class AiProviderChainClient {
         json.append(',');
         json.append("\"max_tokens\":").append(config.maxTokens);
         json.append(',');
-        json.append("\"stream\":false");
+        json.append("\"stream\":true");
         json.append('}');
         return json.toString();
     }
@@ -316,6 +393,11 @@ final class AiProviderChainClient {
         Map root = mapValue(parsed);
         if (root == null) {
             return "";
+        }
+        Object error = root.get("error");
+        if (error instanceof Map) {
+            throw new RuntimeException("Gemini error: "
+                    + stringValue(((Map) error).get("message")));
         }
         Object candidatesObject = root.get("candidates");
         if (!(candidatesObject instanceof List) || ((List) candidatesObject).isEmpty()) {
@@ -338,6 +420,9 @@ final class AiProviderChainClient {
         for (int i = 0; i < parts.size(); i++) {
             Map part = mapValue(parts.get(i));
             if (part == null) {
+                continue;
+            }
+            if (Boolean.TRUE.equals(part.get("thought"))) {
                 continue;
             }
             String text = stringValue(part.get("text"));
@@ -399,10 +484,10 @@ final class AiProviderChainClient {
     private static String firstGeminiModel(OpenRouterConfig config) {
         String source = config.geminiModels;
         if (source == null || source.trim().length() == 0) {
-            return "gemini-3.5-flash";
+            return "gemini-3.6-flash";
         }
         String[] parts = source.split(",");
-        return parts.length == 0 ? "gemini-3.5-flash" : parts[0].trim();
+        return parts.length == 0 ? "gemini-3.6-flash" : parts[0].trim();
     }
 
     private static long retryDelay(long[] delays, int index) {

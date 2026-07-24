@@ -5,188 +5,62 @@
       "priority": -2,
       "items": [
         {
-          "name": "Install Share->Trans v2",
-          "priority": 1,
-          "action": "./bin/install-v2.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install Trans + Russian target v3",
-          "priority": 2,
-          "action": "./bin/install-trans-ru-v3.sh",
-          "exitmenu": true
-        },
-        {
           "name": "Install stable Trans only",
-          "priority": 3,
+          "priority": 1,
           "action": "./bin/install-stable-trans-only.sh",
           "exitmenu": true
         },
         {
-          "name": "Install AI Note v2",
-          "priority": 4,
-          "action": "./bin/install-ai-note-v2.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v3",
-          "priority": 5,
-          "action": "./bin/install-ai-note-v3.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v4",
-          "priority": 6,
-          "action": "./bin/install-ai-note-v4.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v5",
-          "priority": 7,
-          "action": "./bin/install-ai-note-v5.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v6",
-          "priority": 8,
-          "action": "./bin/install-ai-note-v6.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v7",
-          "priority": 9,
-          "action": "./bin/install-ai-note-v7.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v8",
-          "priority": 10,
-          "action": "./bin/install-ai-note-v8.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v9",
-          "priority": 11,
-          "action": "./bin/install-ai-note-v9.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v10 streaming",
-          "priority": 12,
-          "action": "./bin/install-ai-note-v10.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v11 throttled",
-          "priority": 13,
-          "action": "./bin/install-ai-note-v11.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v12 action row",
-          "priority": 14,
-          "action": "./bin/install-ai-note-v12.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v13 popup menu",
-          "priority": 15,
-          "action": "./bin/install-ai-note-v13.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v14 v11 UI",
-          "priority": 16,
-          "action": "./bin/install-ai-note-v14.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v15 VPN",
-          "priority": 17,
-          "action": "./bin/install-ai-note-v15.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v16 Diagnostics",
-          "priority": 18,
-          "action": "./bin/install-ai-note-v16.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v17 Gemini Rotation",
-          "priority": 19,
-          "action": "./bin/install-ai-note-v17.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v18 Gemini Report",
-          "priority": 20,
-          "action": "./bin/install-ai-note-v18.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v19 Gemini 3.5",
-          "priority": 21,
-          "action": "./bin/install-ai-note-v19.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v20 Gemini Chain",
-          "priority": 22,
-          "action": "./bin/install-ai-note-v20.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v21 Gemini Quota",
-          "priority": 23,
-          "action": "./bin/install-ai-note-v21.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Install AI Note v22 Wiki + VPN fix",
-          "priority": 24,
+          "name": "Install AI Note v22 (current device)",
+          "priority": 2,
           "action": "./bin/install-ai-note-v22.sh",
           "exitmenu": true
         },
         {
+          "name": "Install AI Note v24 streaming",
+          "priority": 3,
+          "action": "./bin/install-ai-note-v24.sh",
+          "exitmenu": true
+        },
+        {
           "name": "Start AI VPN Proxy",
-          "priority": 25,
+          "priority": 4,
           "action": "./bin/start-ai-vpn.sh",
           "exitmenu": true
         },
         {
           "name": "Stop AI VPN Proxy",
-          "priority": 26,
+          "priority": 5,
           "action": "./bin/stop-ai-vpn.sh",
           "exitmenu": true
         },
         {
           "name": "Enable AI Diagnostics",
-          "priority": 27,
+          "priority": 6,
           "action": "./bin/enable-ai-diagnostics.sh",
           "exitmenu": true
         },
         {
           "name": "Disable AI Diagnostics",
-          "priority": 28,
+          "priority": 7,
           "action": "./bin/disable-ai-diagnostics.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback Reader Plugin",
-          "priority": 29,
+          "priority": 8,
           "action": "./bin/rollback.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback AI Note Patch",
-          "priority": 30,
+          "priority": 9,
           "action": "./bin/rollback-ai.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback Translator Jar",
-          "priority": 31,
+          "priority": 10,
           "action": "./bin/rollback-translator.sh",
           "exitmenu": true
         }
