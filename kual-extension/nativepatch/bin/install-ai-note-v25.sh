@@ -2,7 +2,7 @@
 
 LOG="/mnt/us/native-reader-research/nativepatch.log"
 READER_PATCH="/mnt/us/native-reader-research/patched/Reader-plugin.v3.jar"
-SDK_PATCH="/mnt/us/native-reader-research/patched/ReaderSDK-impl.ai-v24.jar"
+SDK_PATCH="/mnt/us/native-reader-research/patched/ReaderSDK-impl.ai-v25.jar"
 TRANSLATOR_ORIGINAL="/mnt/us/native-reader-research/jars/translator.jar"
 READER_TARGET="/opt/amazon/ebook/lib/Reader-plugin.jar"
 SDK_TARGET="/opt/amazon/ebook/lib/ReaderSDK-impl.jar"
@@ -26,7 +26,7 @@ set_prop() {
 
 mkdir -p "$BACKUP_DIR" "$VPN_DIR"
 {
-  echo "[$TS] install-ai-note-v24 start"
+  echo "[$TS] install-ai-note-v25 start"
   if [ ! -f "$READER_PATCH" ]; then
     echo "missing reader patch: $READER_PATCH"
     exit 1
@@ -48,15 +48,15 @@ mkdir -p "$BACKUP_DIR" "$VPN_DIR"
     exit 1
   fi
 
-  cp -p "$READER_TARGET" "$BACKUP_DIR/Reader-plugin.jar.before-ai-note-v24.$TS" || exit 1
-  cp -p "$SDK_TARGET" "$BACKUP_DIR/ReaderSDK-impl.jar.before-ai-note-v24.$TS" || exit 1
-  cp -p "$TRANSLATOR_TARGET" "$BACKUP_DIR/translator.jar.before-ai-note-v24.$TS" || exit 1
-  cp -p "$CONFIG" "$BACKUP_DIR/ai-assistant.properties.before-ai-note-v24.$TS" || exit 1
+  cp -p "$READER_TARGET" "$BACKUP_DIR/Reader-plugin.jar.before-ai-note-v25.$TS" || exit 1
+  cp -p "$SDK_TARGET" "$BACKUP_DIR/ReaderSDK-impl.jar.before-ai-note-v25.$TS" || exit 1
+  cp -p "$TRANSLATOR_TARGET" "$BACKUP_DIR/translator.jar.before-ai-note-v25.$TS" || exit 1
+  cp -p "$CONFIG" "$BACKUP_DIR/ai-assistant.properties.before-ai-note-v25.$TS" || exit 1
   if [ -f "$VPN_DIR/start-ai-vpn.sh" ]; then
-    cp -p "$VPN_DIR/start-ai-vpn.sh" "$BACKUP_DIR/start-ai-vpn.sh.before-ai-note-v24.$TS" || exit 1
+    cp -p "$VPN_DIR/start-ai-vpn.sh" "$BACKUP_DIR/start-ai-vpn.sh.before-ai-note-v25.$TS" || exit 1
   fi
   if [ -f "$VPN_DIR/stop-ai-vpn.sh" ]; then
-    cp -p "$VPN_DIR/stop-ai-vpn.sh" "$BACKUP_DIR/stop-ai-vpn.sh.before-ai-note-v24.$TS" || exit 1
+    cp -p "$VPN_DIR/stop-ai-vpn.sh" "$BACKUP_DIR/stop-ai-vpn.sh.before-ai-note-v25.$TS" || exit 1
   fi
 
   set_prop gemini_models gemini-3.6-flash || exit 1
@@ -79,7 +79,7 @@ mkdir -p "$BACKUP_DIR" "$VPN_DIR"
   sync
   sha256sum "$READER_TARGET" "$SDK_TARGET" "$TRANSLATOR_TARGET" >> "$LOG" 2>&1
   mntroot ro
-  echo "[$TS] install-ai-note-v24 done; rebooting"
+  echo "[$TS] install-ai-note-v25 done; rebooting"
 } >> "$LOG" 2>&1
 
 reboot

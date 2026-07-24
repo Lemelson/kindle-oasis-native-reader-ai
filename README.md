@@ -17,14 +17,22 @@ reader modification:
   Gemini using `gemini-3.6-flash` first, with DeepSeek fallbacks.
 - A short tap on a prompt uses Flash; a long press uses DeepSeek V4 Pro.
 - Opening the AI card immediately starts `Explain`, so the normal path is one
-  tap on `AI`. Other modes remain available after the active request finishes.
+  tap on `AI`.
+- Pressing another mode cancels the current HTTP stream and all future retries,
+  then starts only the newly selected request. The selected button is shown in
+  bold on a gray background.
+- Repeated taps on the same active mode/model are ignored, preventing accidental
+  duplicate API calls. A long press is a different model choice and can replace
+  an active short-tap request.
+- Xray starts in parallel with Kindle context extraction and remains available
+  until the AI card closes, so switching modes does not restart the tunnel.
 - Gemini streams only final-answer chunks into the card. Hidden Gemini thinking
   stays hidden; status and fallback notices remain visible.
 
 Current local git checkpoint:
 
 ```text
-current: AI Note v24 Gemini streaming + reliable VPN lifecycle
+current: AI Note v25 instant session + latest-request-wins
 ```
 
 ## Device State
@@ -68,10 +76,11 @@ AI assistant:
 select text -> AI -> Explain starts automatically
 ```
 
-The AI card automatically starts the normal Flash `Explain` request. After it
-finishes, short-tapping another mode starts Flash and long-pressing a mode for
-about 0.8 seconds starts DeepSeek V4 Pro. Buttons are disabled while a request
-is active so concurrent taps cannot race the shared VPN lifecycle.
+The AI card automatically starts the normal Flash `Explain` request.
+Short-tapping another mode cancels the previous request and starts the normal
+Gemini-first chain. Long-pressing a mode for about 0.8 seconds cancels the
+previous request and starts with DeepSeek V4 Pro. Only the latest request can
+retry or update the card.
 
 ## Repository Layout
 
@@ -101,8 +110,8 @@ docs/
 Current AI jar:
 
 ```text
-patch-work/patched-ai-v24/ReaderSDK-impl.ai-v24.jar
-SHA-256: 71e879929c7c49a09cc83bfaad082c219caecb0c491ceabd6dcb200102ab9647
+patch-work/patched-ai-v25/ReaderSDK-impl.ai-v25.jar
+SHA-256: fd9c02e517b6b04f1969f682a666fa81715b52bbee48ad321cba326da1da2124
 
 patch-work/patched-v3/Reader-plugin.jar
 SHA-256: d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907
@@ -111,7 +120,7 @@ SHA-256: d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907
 Current KUAL install action:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v24 streaming
+KUAL -> Native Reader Patch -> Install AI Note v25 instant session
 ```
 
 Use `Enable AI Diagnostics` before a provider routing test. In diagnostics

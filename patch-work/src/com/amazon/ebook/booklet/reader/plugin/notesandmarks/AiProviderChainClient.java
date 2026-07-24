@@ -24,91 +24,167 @@ final class AiProviderChainClient {
     private static final int OPENROUTER_PRO_ATTEMPTS = 5;
     private static final int OPENROUTER_FLASH_ATTEMPTS = 4;
     private static final Object REQUEST_LOCK = new Object();
+    private static Request activeRequest;
 
     private AiProviderChainClient() { }
 
-    static void send(
+    static final class Request {
+        private volatile boolean cancelled;
+        private volatile Thread thread;
+        private volatile HttpURLConnection connection;
+
+        boolean isCancelled() {
+            return cancelled;
+        }
+
+        void cancel() {
+            cancelled = true;
+            HttpURLConnection currentConnection = connection;
+            if (currentConnection != null) {
+                try {
+                    currentConnection.disconnect();
+                } catch (Throwable ignored) {
+                    // Best-effort cancellation of an active network read.
+                }
+            }
+            Thread currentThread = thread;
+            if (currentThread != null) {
+                currentThread.interrupt();
+            }
+        }
+
+        private void setThread(Thread value) {
+            thread = value;
+        }
+
+        private void setConnection(HttpURLConnection value) {
+            connection = value;
+            if (cancelled && value != null) {
+                value.disconnect();
+            }
+        }
+
+        private void clearConnection(HttpURLConnection value) {
+            if (connection == value) {
+                connection = null;
+            }
+        }
+    }
+
+    static Request send(
             ReaderSDK sdk,
             final OpenRouterConfig config,
+            final AiVpnSession vpnSession,
             final String userPrompt,
             final boolean proFirst,
             final OpenRouterClient.Callback callback) {
+        final Request request = new Request();
         Thread thread = new Thread(new Runnable() {
             public void run() {
-                synchronized (REQUEST_LOCK) {
-                    runChain(config, userPrompt, proFirst, callback);
+                try {
+                    runChain(config, vpnSession, userPrompt, proFirst, callback, request);
+                } finally {
+                    synchronized (REQUEST_LOCK) {
+                        if (activeRequest == request) {
+                            activeRequest = null;
+                        }
+                    }
                 }
             }
         }, "AIAssistantProviderChain");
+        request.setThread(thread);
+        synchronized (REQUEST_LOCK) {
+            if (activeRequest != null) {
+                activeRequest.cancel();
+            }
+            activeRequest = request;
+        }
         try {
             thread.setDaemon(true);
         } catch (Throwable ignored) {
             // Some Kindle runtimes may not care about daemon status.
         }
         thread.start();
+        return request;
     }
 
     private static void runChain(
             OpenRouterConfig config,
+            AiVpnSession vpnSession,
             String userPrompt,
             boolean proFirst,
-            OpenRouterClient.Callback callback) {
+            OpenRouterClient.Callback callback,
+            Request request) {
+        if (request.isCancelled()) {
+            return;
+        }
         AiAssistantLog.writeLastPrompt(proFirst ? config.proModel : config.geminiModels, userPrompt);
-        boolean vpnStarted = false;
         try {
             if (config.vpnEnabled) {
-                callback.onStatus("Starting VPN...");
-                OpenRouterClient.ensureVpnProxy(config);
-                vpnStarted = true;
-                callback.onStatus("VPN ready. Thinking:");
+                callback.onStatus("Подключаю…");
+                if (vpnSession != null) {
+                    vpnSession.awaitReady();
+                } else {
+                    OpenRouterClient.ensureVpnProxy(config);
+                }
+            }
+            if (request.isCancelled()) {
+                return;
             }
 
             if (proFirst) {
-                if (tryOpenRouter(config, userPrompt, callback,
+                if (tryOpenRouter(config, userPrompt, callback, request,
                         config.proModel,
                         OPENROUTER_PRO_ATTEMPTS,
-                        "DeepSeek V4 Pro",
-                        "")) {
+                        "DeepSeek Pro")) {
                     return;
                 }
-                if (tryGemini(config, userPrompt, callback,
+                if (request.isCancelled()) {
+                    return;
+                }
+                callback.onStatus("Переключаюсь на Gemini…");
+                if (tryGemini(config, userPrompt, callback, request,
                         GEMINI_ATTEMPTS,
-                        "Final fallback retry with Gemini 3.6 Flash",
-                        false)) {
+                        "Gemini")) {
                     return;
                 }
-                if (tryOpenRouter(config, userPrompt, callback,
+                if (request.isCancelled()) {
+                    return;
+                }
+                callback.onStatus("Переключаюсь на DeepSeek Flash…");
+                if (tryOpenRouter(config, userPrompt, callback, request,
                         config.model,
                         OPENROUTER_FLASH_ATTEMPTS,
-                        "DeepSeek V4 Flash",
-                        "Final fallback retry with DeepSeek V4 Flash")) {
+                        "DeepSeek Flash")) {
                     return;
                 }
                 throw new RuntimeException("All providers failed.");
             }
 
-            if (tryGemini(config, userPrompt, callback,
+            if (tryGemini(config, userPrompt, callback, request,
                     GEMINI_ATTEMPTS,
-                    "Gemini 3.6 Flash",
-                    false)) {
+                    "Gemini")) {
                 return;
             }
-            if (tryOpenRouter(config, userPrompt, callback,
+            if (request.isCancelled()) {
+                return;
+            }
+            callback.onStatus("Переключаюсь на DeepSeek Pro…");
+            if (tryOpenRouter(config, userPrompt, callback, request,
                     config.proModel,
                     OPENROUTER_PRO_ATTEMPTS,
-                    "DeepSeek V4 Pro",
-                    "Final fallback retry with DeepSeek V4 Pro")) {
+                    "DeepSeek Pro")) {
                 return;
             }
             throw new RuntimeException("All providers failed.");
         } catch (Throwable t) {
+            if (request.isCancelled()) {
+                AiAssistantLog.write("provider chain cancelled");
+                return;
+            }
             String message = t.toString();
             AiAssistantLog.writeLastError(message);
-            callback.onError(message);
-        } finally {
-            if (vpnStarted || config.vpnEnabled) {
-                OpenRouterClient.stopVpnProxy(config);
-            }
+            callback.onError("Не удалось получить ответ. Нажмите ещё раз.");
         }
     }
 
@@ -116,26 +192,36 @@ final class AiProviderChainClient {
             OpenRouterConfig config,
             String userPrompt,
             OpenRouterClient.Callback callback,
+            Request request,
             int attempts,
-            String label,
-            boolean throwAfterFailure) throws Exception {
+            String label) throws Exception {
         String lastError = "";
         GeminiQuotaState quotaState = GeminiQuotaState.load(config);
         for (int attempt = 1; attempt <= attempts; attempt++) {
+            if (request.isCancelled()) {
+                return false;
+            }
             if (attempt > 1) {
-                sleep(retryDelay(GEMINI_RETRY_DELAYS_MS, attempt - 2));
+                callback.onStatus(label + ": повтор " + attempt + "/" + attempts + "…");
+                if (!sleep(retryDelay(GEMINI_RETRY_DELAYS_MS, attempt - 2), request)) {
+                    return false;
+                }
             }
             String[] keys = geminiKeys(config);
             int keyIndex = quotaState.selectAvailableKey(keys);
             if (keyIndex < 0) {
                 lastError = "Gemini quota exhausted for all configured keys.";
-                callback.onStatus(label + " skipped: " + lastError);
+                callback.onStatus("Gemini недоступен.");
                 break;
             }
-            callback.onStatus(label + " attempt " + attempt + "/" + attempts
-                    + " with key " + (keyIndex + 1) + "/" + keys.length + ".");
+            if (attempt == 1) {
+                callback.onStatus(label + " думает…");
+            }
             try {
-                String text = sendGemini(config, userPrompt, keys[keyIndex], callback);
+                String text = sendGemini(config, userPrompt, keys[keyIndex], callback, request);
+                if (request.isCancelled()) {
+                    return false;
+                }
                 if (text != null && text.trim().length() > 0) {
                     quotaState.recordSuccess(keyIndex);
                     AiAssistantLog.writeLastResponse("Gemini 3.6 Flash\n\n" + text);
@@ -147,23 +233,14 @@ final class AiProviderChainClient {
                 lastError = t.toString();
                 if (t.quotaLimited) {
                     quotaState.recordQuotaLimited(keyIndex);
-                    callback.onStatus(label + " key " + (keyIndex + 1) + "/" + keys.length
-                            + " quota-limited; switching key if available.");
+                    callback.onStatus("Gemini: пробую другой ключ…");
                 }
             } catch (Throwable t) {
                 lastError = t.toString();
             }
-            if (attempt < attempts) {
-                callback.onStatus(label + " attempt " + attempt + "/" + attempts
-                        + " failed: " + shortReason(lastError)
-                        + "\nRetry " + (attempt + 1) + "/" + attempts
-                        + " in " + formatDelay(retryDelay(GEMINI_RETRY_DELAYS_MS, attempt - 1)) + ".");
-            }
+            AiAssistantLog.write(label + " attempt " + attempt + "/" + attempts
+                    + " failed: " + shortReason(lastError));
         }
-        if (throwAfterFailure) {
-            throw new RuntimeException(label + " failed: " + shortReason(lastError));
-        }
-        callback.onStatus(label + " failed after " + attempts + " attempts: " + shortReason(lastError));
         return false;
     }
 
@@ -171,21 +248,28 @@ final class AiProviderChainClient {
             OpenRouterConfig config,
             String userPrompt,
             OpenRouterClient.Callback callback,
+            Request request,
             String model,
             int attempts,
-            String label,
-            String notice) throws Exception {
+            String label) throws Exception {
         String lastError = "";
-        if (notice != null && notice.length() > 0) {
-            callback.onStatus(notice + " attempt 1/" + attempts + ".");
-        }
         for (int attempt = 1; attempt <= attempts; attempt++) {
-            if (attempt > 1) {
-                sleep(retryDelay(OPENROUTER_RETRY_DELAYS_MS, attempt - 2));
+            if (request.isCancelled()) {
+                return false;
             }
-            callback.onStatus(label + " attempt " + attempt + "/" + attempts + ".");
+            if (attempt > 1) {
+                callback.onStatus(label + ": повтор " + attempt + "/" + attempts + "…");
+                if (!sleep(retryDelay(OPENROUTER_RETRY_DELAYS_MS, attempt - 2), request)) {
+                    return false;
+                }
+            } else {
+                callback.onStatus(label + " думает…");
+            }
             try {
-                String text = sendOpenRouter(config, userPrompt, model, callback);
+                String text = sendOpenRouter(config, userPrompt, model, callback, request);
+                if (request.isCancelled()) {
+                    return false;
+                }
                 if (text != null && text.trim().length() > 0) {
                     AiAssistantLog.writeLastResponse(label + "\n\n" + text);
                     callback.onSuccess(text);
@@ -195,14 +279,9 @@ final class AiProviderChainClient {
             } catch (Throwable t) {
                 lastError = t.toString();
             }
-            if (attempt < attempts) {
-                callback.onStatus(label + " attempt " + attempt + "/" + attempts
-                        + " failed: " + shortReason(lastError)
-                        + "\nRetry " + (attempt + 1) + "/" + attempts
-                        + " in " + formatDelay(retryDelay(OPENROUTER_RETRY_DELAYS_MS, attempt - 1)) + ".");
-            }
+            AiAssistantLog.write(label + " attempt " + attempt + "/" + attempts
+                    + " failed: " + shortReason(lastError));
         }
-        callback.onStatus(label + " failed after " + attempts + " attempts: " + shortReason(lastError));
         return false;
     }
 
@@ -210,7 +289,8 @@ final class AiProviderChainClient {
             OpenRouterConfig config,
             String userPrompt,
             String key,
-            OpenRouterClient.Callback callback) throws Exception {
+            OpenRouterClient.Callback callback,
+            Request request) throws Exception {
         if (key.length() == 0) {
             throw new RuntimeException("Gemini API key missing.");
         }
@@ -218,6 +298,7 @@ final class AiProviderChainClient {
         String url = trimSlash(config.geminiBaseUrl) + "/models/" + model
                 + ":streamGenerateContent?alt=sse&key=" + java.net.URLEncoder.encode(key, "UTF-8");
         HttpURLConnection connection = OpenRouterClient.openConnection(new URL(url), config);
+        request.setConnection(connection);
         try {
             connection.setConnectTimeout(config.timeoutMs);
             connection.setReadTimeout(config.timeoutMs);
@@ -241,8 +322,9 @@ final class AiProviderChainClient {
                         "Gemini HTTP " + status + ": " + shortReason(response),
                         isQuotaLimited(status, response));
             }
-            return readGeminiEventStream(connection.getInputStream(), callback);
+            return readGeminiEventStream(connection.getInputStream(), callback, request);
         } finally {
+            request.clearConnection(connection);
             try {
                 connection.disconnect();
             } catch (Throwable ignored) {
@@ -254,14 +336,24 @@ final class AiProviderChainClient {
     static String readGeminiEventStream(
             InputStream input,
             OpenRouterClient.Callback callback) throws Exception {
+        return readGeminiEventStream(input, callback, null);
+    }
+
+    static String readGeminiEventStream(
+            InputStream input,
+            OpenRouterClient.Callback callback,
+            Request request) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(input, "UTF-8"));
         StringBuffer answer = new StringBuffer();
         StringBuffer eventData = new StringBuffer();
         try {
             String line;
             while ((line = reader.readLine()) != null) {
+                if (request != null && request.isCancelled()) {
+                    break;
+                }
                 if (line.length() == 0) {
-                    appendGeminiEvent(eventData, answer, callback);
+                    appendGeminiEvent(eventData, answer, callback, request);
                     eventData.setLength(0);
                     continue;
                 }
@@ -276,7 +368,7 @@ final class AiProviderChainClient {
                     eventData.append(data);
                 }
             }
-            appendGeminiEvent(eventData, answer, callback);
+            appendGeminiEvent(eventData, answer, callback, request);
         } finally {
             try {
                 reader.close();
@@ -291,7 +383,11 @@ final class AiProviderChainClient {
     private static void appendGeminiEvent(
             StringBuffer eventData,
             StringBuffer answer,
-            OpenRouterClient.Callback callback) throws Exception {
+            OpenRouterClient.Callback callback,
+            Request request) throws Exception {
+        if (request != null && request.isCancelled()) {
+            return;
+        }
         if (eventData.length() == 0 || "[DONE]".equals(eventData.toString())) {
             return;
         }
@@ -306,8 +402,10 @@ final class AiProviderChainClient {
             OpenRouterConfig config,
             String userPrompt,
             String model,
-            OpenRouterClient.Callback callback) throws Exception {
+            OpenRouterClient.Callback callback,
+            Request request) throws Exception {
         HttpURLConnection connection = OpenRouterClient.openConnection(new URL(config.baseUrl), config);
+        request.setConnection(connection);
         try {
             connection.setConnectTimeout(config.timeoutMs);
             connection.setReadTimeout(config.timeoutMs);
@@ -334,6 +432,7 @@ final class AiProviderChainClient {
             }
             return OpenRouterClient.readContentEventStream(connection.getInputStream(), callback);
         } finally {
+            request.clearConnection(connection);
             try {
                 connection.disconnect();
             } catch (Throwable ignored) {
@@ -494,12 +593,13 @@ final class AiProviderChainClient {
         return delays[Math.min(Math.max(index, 0), delays.length - 1)];
     }
 
-    private static void sleep(long delayMs) {
+    private static boolean sleep(long delayMs, Request request) {
         try {
             Thread.sleep(delayMs);
         } catch (InterruptedException ignored) {
-            // Continue with the retry.
+            // Cancellation interrupts retry waits.
         }
+        return !request.isCancelled();
     }
 
     private static String trimSlash(String value) {
@@ -510,13 +610,6 @@ final class AiProviderChainClient {
             value = value.substring(0, value.length() - 1);
         }
         return value;
-    }
-
-    private static String formatDelay(long delayMs) {
-        if (delayMs == 500L) {
-            return "0.5s";
-        }
-        return String.valueOf(delayMs / 1000L) + "s";
     }
 
     private static String shortReason(String reason) {

@@ -15,7 +15,7 @@ If the Kindle is connected over USB, current artifacts live under:
 On Kindle, install through:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v24 streaming
+KUAL -> Native Reader Patch -> Install AI Note v25 instant session
 ```
 
 The installer:
@@ -140,21 +140,24 @@ It removes:
 
 ## Current Stable AI State
 
-The current AI checkpoint is:
+The current local candidate is:
 
 ```text
-AI Note v14 v11 UI upgrade
+AI Note v25 instant session + latest-request-wins
 ```
 
 It includes:
 
 - one embedded AI smart-card with top prompt buttons and lower output area
-- streaming reasoning
-- streaming final answer
-- short tap for DeepSeek V4 Flash
+- one-tap automatic Explain through Gemini 3.6 Flash
+- Gemini and OpenRouter final-answer streaming
+- short tap for the Gemini-first chain
 - long press for DeepSeek V4 Pro
-- explicit retry/fallback status, including Xiaomi MiMo V2.5 Pro fallback
-- optional local Xray/VLESS HTTP proxy for OpenRouter requests in v15
+- cancellation of the previous stream/retries when a new mode is selected
+- one Xray session kept alive until the AI card closes
+
+The connected Kindle still has v22 installed until v25 is explicitly copied
+and installed.
 
 ## If Reader UI Freezes
 
@@ -175,10 +178,10 @@ reset can remove documents and homebrew launchers.
 The AI jar is built with:
 
 ```sh
-rm -rf patch-work/classes-ai-v23 patch-work/patched-ai-v23
-mkdir -p patch-work/classes-ai-v23
+rm -rf patch-work/classes-ai-v25 patch-work/patched-ai-v25
+mkdir -p patch-work/classes-ai-v25
 CP=$(printf '%s:' from-kindle/native-reader-research/jars/*.jar)
-javac --release 8 -cp "$CP" -d patch-work/classes-ai-v23 \
+javac --release 8 -cp "$CP" -d patch-work/classes-ai-v25 \
   $(find patch-work/stubs patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks -name '*.java' -print)
 python3 patch-work/scripts/build_ai_note_patch.py
 ```
@@ -187,12 +190,8 @@ Then copy the jar and KUAL extension files to the mounted Kindle USB partition.
 
 ## Git Notes
 
-At the time this documentation was written, the repository had local commits and
-tags but no configured remote:
+Private remote:
 
-```sh
-git remote -v
-# no output
+```text
+https://github.com/Lemelson/kindle-oasis-native-reader-ai
 ```
-
-So the work is committed locally, but not pushed to GitHub from this machine.

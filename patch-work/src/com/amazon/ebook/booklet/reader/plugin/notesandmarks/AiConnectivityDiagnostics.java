@@ -16,7 +16,10 @@ final class AiConnectivityDiagnostics {
 
     private AiConnectivityDiagnostics() { }
 
-    static void run(final OpenRouterConfig config, final Callback callback) {
+    static void run(
+            final OpenRouterConfig config,
+            final AiVpnSession vpnSession,
+            final Callback callback) {
         Thread thread = new Thread(new Runnable() {
             public void run() {
                 StringBuffer report = new StringBuffer();
@@ -28,7 +31,7 @@ final class AiConnectivityDiagnostics {
                     if (config.vpnEnabled) {
                         append(report, "Starting VPN proxy...");
                         callback.onUpdate(report.toString());
-                        OpenRouterClient.ensureVpnProxy(config);
+                        vpnSession.awaitReady();
                         append(report, "VPN proxy: OK " + config.vpnProxyHost + ":" + config.vpnProxyPort);
                     }
 
@@ -38,7 +41,6 @@ final class AiConnectivityDiagnostics {
                 } catch (Throwable t) {
                     append(report, "Diagnostics fatal error: " + shortText(t.toString()));
                 } finally {
-                    OpenRouterClient.stopVpnProxy(config);
                     append(report, "Done.");
                     writeReport(report);
                     callback.onUpdate(report.toString());

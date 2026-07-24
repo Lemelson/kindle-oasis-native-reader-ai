@@ -745,3 +745,33 @@ Built artifact:
 
 - Mac artifact: `patch-work/patched-ai-v24/ReaderSDK-impl.ai-v24.jar`
 - SHA-256: `71e879929c7c49a09cc83bfaad082c219caecb0c491ceabd6dcb200102ab9647`
+
+## AI Note v25 instant session and latest-request-wins
+
+Built on the uninstalled v24 source. Changes:
+
+- keeps the existing 8pt answer text and embedded smart-card location
+- starts Xray warm-up immediately when `AI` is selected, in parallel with
+  before/after context extraction
+- keeps that Xray session alive across Explain, Words, Wiki, Why, and Deep;
+  it stops in a background thread only when the AI card closes
+- automatically starts Explain exactly as v24 did
+- replaces disabled-in-flight buttons with latest-request-wins cancellation:
+  another short or long press disconnects the previous HTTP stream, interrupts
+  retry waits, prevents future fallbacks, and starts only the selected request
+- ignores repeat taps for the same active mode/model so accidental double or
+  triple taps do not create duplicate API calls
+- preserves long press as the explicit DeepSeek V4 Pro-first gesture
+- highlights the active mode with bold text and a gray button background
+- shortens user-visible provider statuses while keeping technical failures in
+  the diagnostic logs
+- keeps Gemini 3.6 Flash first for normal taps, DeepSeek Pro first for long
+  presses, Gemini/OpenRouter SSE streaming, `thinkingLevel=high`, and the shared
+  `6750` output-token limit
+
+Device deployment: intentionally deferred. v22 remains installed.
+
+Built artifact:
+
+- Mac artifact: `patch-work/patched-ai-v25/ReaderSDK-impl.ai-v25.jar`
+- SHA-256: `fd9c02e517b6b04f1969f682a666fa81715b52bbee48ad321cba326da1da2124`

@@ -33,6 +33,8 @@ final class AiAssistantCard extends SelectionDialogCard {
 
     private final ReaderSDK sdk;
     private final AiAssistantController.SelectionData selection;
+    private final OpenRouterConfig config;
+    private final AiVpnSession vpnSession;
     private final Map cachedResponses = new HashMap();
     private final Map statusTexts = new HashMap();
     private final Map requestIds = new HashMap();
@@ -41,15 +43,29 @@ final class AiAssistantCard extends SelectionDialogCard {
     private String activeMode = "";
     private String activeKey = "";
     private int requestSerial = 0;
-    private boolean requestRunning = false;
+    private int currentRequestId = 0;
+    private AiProviderChainClient.Request activeRequest;
+    private String activeRequestKey = "";
+    private boolean sessionClosed;
 
-    AiAssistantCard(ReaderSDK sdk, AiAssistantController.SelectionData selection) {
+    AiAssistantCard(
+            ReaderSDK sdk,
+            AiAssistantController.SelectionData selection,
+            OpenRouterConfig config,
+            AiVpnSession vpnSession) {
         this.sdk = sdk;
         this.selection = selection;
+        this.config = config;
+        this.vpnSession = vpnSession;
         buildUi();
+    }
+
+    void startDefault() {
         sdk.invokeLater(new Runnable() {
             public void run() {
-                selectPreset("Explain", false);
+                if (activeMode.length() == 0) {
+                    selectPreset("Explain", false);
+                }
             }
         });
     }
@@ -76,6 +92,16 @@ final class AiAssistantCard extends SelectionDialogCard {
 
     public String anQ() {
         return "AI_ASSISTANT";
+    }
+
+    public void closeDialog() {
+        closeSession();
+        super.closeDialog();
+    }
+
+    public void removeNotify() {
+        closeSession();
+        super.removeNotify();
     }
 
     private void buildUi() {
@@ -107,6 +133,9 @@ final class AiAssistantCard extends SelectionDialogCard {
 
     private void addPreset(JPanel panel, final String name) {
         JButton button = new JButton(name);
+        button.setActionCommand(name);
+        button.setOpaque(true);
+        button.setContentAreaFilled(true);
         compactButton(button);
         button.addMouseListener(new MouseAdapter() {
             private Timer longPressTimer;
@@ -153,13 +182,18 @@ final class AiAssistantCard extends SelectionDialogCard {
     }
 
     private void selectPreset(String name, boolean useProModel) {
-        if (requestRunning) {
+        if (sessionClosed) {
             return;
         }
         String key = modeKey(name, useProModel);
+        if (activeRequest != null && key.equals(activeRequestKey)) {
+            return;
+        }
+        cancelActiveRequest();
         boolean sameMode = key.equals(activeKey);
         activeMode = name;
         activeKey = key;
+        updateActiveButton();
         if (!sameMode) {
             String cached = (String) cachedResponses.get(key);
             if (cached != null) {
@@ -180,15 +214,13 @@ final class AiAssistantCard extends SelectionDialogCard {
     private void runPrompt(final String name, String instruction, boolean useProModel) {
         final String key = modeKey(name, useProModel);
         final int requestId = nextRequestId(key);
-        setRequestRunning(true);
         try {
             AiAssistantLog.write("prompt start name=" + name
                     + " modelTier=" + (useProModel ? "pro" : "flash"));
-            OpenRouterConfig config = OpenRouterConfig.load();
             config.proRequest = useProModel;
             if (config.diagnosticsEnabled) {
-                updateStatus(key, requestId, "AI diagnostics enabled.\nStarting checks...");
-                AiConnectivityDiagnostics.run(config, new AiConnectivityDiagnostics.Callback() {
+                updateStatus(key, requestId, "Проверяю подключение…");
+                AiConnectivityDiagnostics.run(config, vpnSession, new AiConnectivityDiagnostics.Callback() {
                     public void onUpdate(final String text) {
                         sdk.invokeLater(new Runnable() {
                             public void run() {
@@ -204,35 +236,32 @@ final class AiAssistantCard extends SelectionDialogCard {
             }
             if (!config.isUsable()) {
                 updateStatus(key, requestId,
-                        "OpenRouter config missing.\nCheck /mnt/us/native-reader-research/ai-assistant.properties");
+                        "Не найдена конфигурация AI.");
                 finishRequest(key, requestId);
                 return;
             }
 
-            updateStatus(key, requestId, statusMessage(useProModel, "Thinking:"));
+            updateStatus(key, requestId,
+                    useProModel ? "DeepSeek Pro думает…" : "Gemini думает…");
             String userPrompt = AiAssistantController.buildUserPrompt(name, instruction, selection);
             final StringBuffer thinking = new StringBuffer();
             final StringBuffer content = new StringBuffer();
-            final String[] fallbackNotice = new String[] { "" };
             final long[] lastThinkingUpdateMs = new long[] { 0L };
             final long[] lastContentUpdateMs = new long[] { 0L };
-            AiProviderChainClient.send(sdk, config, userPrompt, useProModel, new OpenRouterClient.Callback() {
+            activeRequest = AiProviderChainClient.send(
+                    sdk, config, vpnSession, userPrompt, useProModel, new OpenRouterClient.Callback() {
                 public void onStatus(final String message) {
                     sdk.invokeLater(new Runnable() {
                         public void run() {
                             if (content.length() > 0 && message != null
-                                    && message.indexOf("attempt") >= 0) {
+                                    && (message.indexOf("повтор") >= 0
+                                    || message.indexOf("Переключаюсь") >= 0)) {
                                 content.setLength(0);
                                 thinking.setLength(0);
                                 lastContentUpdateMs[0] = 0L;
                                 lastThinkingUpdateMs[0] = 0L;
                             }
-                            String notice = fallbackNotice(message);
-                            if (notice.length() > 0) {
-                                fallbackNotice[0] = notice;
-                            }
-                            updateStatus(key, requestId,
-                                    statusMessage(useProModel, withNotice(fallbackNotice[0], message)));
+                            updateStatus(key, requestId, message);
                         }
                     });
                 }
@@ -245,10 +274,8 @@ final class AiAssistantCard extends SelectionDialogCard {
                             }
                             thinking.append(text);
                             if (shouldUpdateStream(lastThinkingUpdateMs)) {
-                                updateStatus(key, requestId,
-                                        statusMessage(useProModel, withNotice(
-                                                fallbackNotice[0],
-                                                "Thinking:\n" + displayTail(thinking.toString()))));
+                                updateStatus(key, requestId, "DeepSeek думает…\n"
+                                        + displayTail(thinking.toString()));
                             }
                         }
                     });
@@ -262,8 +289,7 @@ final class AiAssistantCard extends SelectionDialogCard {
                             }
                             content.append(text);
                             if (shouldUpdateStream(lastContentUpdateMs)) {
-                                updateStatus(key, requestId,
-                                        withNotice(fallbackNotice[0], content.toString()));
+                                updateStatus(key, requestId, content.toString());
                             }
                         }
                     });
@@ -277,7 +303,7 @@ final class AiAssistantCard extends SelectionDialogCard {
                             if (!isLatestRequest(key, requestId)) {
                                 return;
                             }
-                            String clean = withNotice(fallbackNotice[0], text == null ? "" : text);
+                            String clean = text == null ? "" : text;
                             cachedResponses.put(key, clean);
                             statusTexts.remove(key);
                             if (key.equals(activeKey)) {
@@ -292,17 +318,16 @@ final class AiAssistantCard extends SelectionDialogCard {
                     AiAssistantLog.write("prompt error name=" + name + " message=" + message);
                     sdk.invokeLater(new Runnable() {
                         public void run() {
-                            updateStatus(key, requestId, withNotice(
-                                    fallbackNotice[0],
-                                    "AI request failed:\n" + message));
+                            updateStatus(key, requestId, message);
                             finishRequest(key, requestId);
                         }
                     });
                 }
             });
+            activeRequestKey = key;
         } catch (Throwable t) {
             AiAssistantLog.write("prompt failed name=" + name + " error=" + t.toString());
-            updateStatus(key, requestId, "AI failed:\n" + t.toString());
+            updateStatus(key, requestId, "Не удалось запустить AI.");
             finishRequest(key, requestId);
         }
     }
@@ -311,13 +336,38 @@ final class AiAssistantCard extends SelectionDialogCard {
         if (!isLatestRequest(key, requestId)) {
             return;
         }
-        setRequestRunning(false);
+        activeRequest = null;
+        activeRequestKey = "";
     }
 
-    private void setRequestRunning(boolean running) {
-        requestRunning = running;
+    private void cancelActiveRequest() {
+        if (activeRequest != null) {
+            activeRequest.cancel();
+            activeRequest = null;
+            activeRequestKey = "";
+            currentRequestId = ++requestSerial;
+        }
+    }
+
+    private void closeSession() {
+        if (sessionClosed) {
+            return;
+        }
+        sessionClosed = true;
+        cancelActiveRequest();
+        currentRequestId = ++requestSerial;
+        vpnSession.close();
+    }
+
+    private void updateActiveButton() {
         for (int i = 0; i < presetButtons.size(); i++) {
-            ((JButton) presetButtons.get(i)).setEnabled(!running);
+            JButton button = (JButton) presetButtons.get(i);
+            boolean active = activeMode.equals(button.getActionCommand());
+            button.setFont(new Font(
+                    "SansSerif",
+                    active ? Font.BOLD : Font.PLAIN,
+                    CONTROL_FONT_SIZE));
+            button.setBackground(active ? Color.LIGHT_GRAY : Color.WHITE);
         }
     }
 
@@ -332,6 +382,7 @@ final class AiAssistantCard extends SelectionDialogCard {
 
     private int nextRequestId(String key) {
         requestSerial++;
+        currentRequestId = requestSerial;
         Integer id = new Integer(requestSerial);
         requestIds.put(key, id);
         cachedResponses.remove(key);
@@ -340,7 +391,9 @@ final class AiAssistantCard extends SelectionDialogCard {
 
     private boolean isLatestRequest(String key, int requestId) {
         Integer latest = (Integer) requestIds.get(key);
-        return latest != null && latest.intValue() == requestId;
+        return requestId == currentRequestId
+                && latest != null
+                && latest.intValue() == requestId;
     }
 
     private void updateStatus(String key, int requestId, String message) {
@@ -356,44 +409,6 @@ final class AiAssistantCard extends SelectionDialogCard {
 
     private static String modeKey(String name, boolean useProModel) {
         return (useProModel ? "pro" : "flash") + "|" + String.valueOf(name);
-    }
-
-    private static String statusMessage(boolean useProModel, String message) {
-        if (!useProModel) {
-            return message;
-        }
-        return "Request sent to DeepSeek V4 Pro.\n" + (message == null ? "" : message);
-    }
-
-    private static String fallbackNotice(String message) {
-        if (message == null) {
-            return "";
-        }
-        int index = message.indexOf("Final fallback retry with ");
-        if (index < 0) {
-            index = message.indexOf("Extra retry with ");
-        }
-        if (index < 0) {
-            return "";
-        }
-        int end = message.indexOf('\n', index);
-        if (end < 0) {
-            end = message.length();
-        }
-        return message.substring(index, end).trim();
-    }
-
-    private static String withNotice(String notice, String body) {
-        if (notice == null || notice.length() == 0) {
-            return body == null ? "" : body;
-        }
-        if (body == null || body.length() == 0) {
-            return notice;
-        }
-        if (body.indexOf(notice) == 0) {
-            return body;
-        }
-        return notice + "\n\n" + body;
     }
 
     private static String displayTail(String text) {

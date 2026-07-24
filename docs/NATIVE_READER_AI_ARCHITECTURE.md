@@ -71,9 +71,10 @@ select text -> AI -> embedded card -> Explain starts automatically
 ```
 
 Opening the card starts `Explain` with Gemini 3.6 Flash, making the normal path
-one tap. After the active request finishes, short-tapping another mode uses the
-normal Gemini-first chain. Long-pressing a mode for about 800 ms starts with
-`pro_model` instead. Buttons are disabled while a request is active.
+one tap. Short-tapping another mode immediately cancels the active HTTP stream
+and pending retries, then uses the normal Gemini-first chain. Long-pressing a
+mode for about 800 ms cancels the active request and starts with `pro_model`
+instead. The active mode button uses bold text and a gray background.
 
 The card is not a separate fullscreen application. It opens through the same
 native smart-card path used by other Kindle reader cards.
@@ -114,6 +115,10 @@ This is meant to reduce spoiler risk in chronological or plot-driven books.
 
 If context extraction fails, the prompt still includes the selected fragment and
 marks the missing side as unavailable.
+
+Xray warm-up starts before context capture. Context extraction and tunnel
+startup therefore run in parallel; the provider request begins when both are
+ready.
 
 ## Provider Configuration
 
@@ -199,6 +204,13 @@ DeepSeek V4 Flash: up to 4 attempts
 
 Retry/fallback status remains visible in the card.
 
+Only one provider-chain request is active globally. A new short or long press
+disconnects the previous HTTP connection, interrupts any retry wait, and
+invalidates its callbacks before starting the new request. The Xray session is
+not restarted between modes. Repeated taps for the same active mode and model
+are ignored; changing the mode or changing short tap to long press replaces the
+request.
+
 ## Streaming Behavior
 
 The current build uses `HttpURLConnection` and reads Server-Sent Events from
@@ -213,11 +225,26 @@ OpenRouter: reasoning chunks, then content chunks
 
 UI behavior:
 
-1. Show provider/retry status while waiting for final output.
+1. Show short Russian statuses such as `Gemini думает…`,
+   `Gemini: повтор 2/4…`, or `Переключаюсь на DeepSeek Pro…`.
 2. Stream final-answer chunks directly, without a `Final answer:` prefix.
 3. Throttle e-ink text updates to at most once every 1.5 seconds.
 4. Cache the completed final answer for the selected mode and selection.
-5. Render the completed answer with the safe Markdown subset.
+5. Keep the existing 8pt output font.
+
+## VPN Session Lifetime
+
+The card owns one Xray session:
+
+```text
+AI pressed -> Xray warm-up + context capture in parallel
+request/mode switches -> same Xray session
+AI card closes -> cancel request -> stop Xray in background
+```
+
+Normal shutdown sends Xray a terminate signal and waits up to three seconds.
+Only a process that does not exit in that interval is force-stopped. The wait
+happens on a background thread and does not block the Kindle UI.
 
 Reasoning text is capped visually to the most recent 12000 characters so very
 long thinking traces do not grow the UI without bound.

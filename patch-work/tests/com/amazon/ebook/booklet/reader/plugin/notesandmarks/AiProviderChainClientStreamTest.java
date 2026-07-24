@@ -31,8 +31,24 @@ public final class AiProviderChainClientStreamTest {
         if (answer.indexOf("hidden reasoning") >= 0) {
             throw new AssertionError("Thought text leaked into final answer.");
         }
+        testCancelledGeminiStream();
         testOpenRouterStream();
+        testVpnDisabledSession();
         System.out.println("AiProviderChainClientStreamTest OK");
+    }
+
+    private static void testCancelledGeminiStream() throws Exception {
+        String sse = "data: {\"candidates\":[{\"content\":{\"parts\":["
+                + "{\"text\":\"must not be delivered\"}]}}]}\n\n";
+        AiProviderChainClient.Request request = new AiProviderChainClient.Request();
+        request.cancel();
+        final StringBuffer streamed = new StringBuffer();
+        String answer = AiProviderChainClient.readGeminiEventStream(
+                new ByteArrayInputStream(sse.getBytes("UTF-8")),
+                callback(streamed),
+                request);
+        assertEquals("", answer, "cancelled Gemini answer");
+        assertEquals("", streamed.toString(), "cancelled Gemini callback");
     }
 
     private static void testOpenRouterStream() throws Exception {
@@ -60,6 +76,28 @@ public final class AiProviderChainClientStreamTest {
         assertEquals("Готово", answer, "OpenRouter answer");
         assertEquals(answer, streamed.toString(), "OpenRouter streamed chunks");
         assertEquals("thinking", reasoning.toString(), "OpenRouter reasoning");
+    }
+
+    private static void testVpnDisabledSession() throws Exception {
+        OpenRouterConfig config = new OpenRouterConfig();
+        config.vpnEnabled = false;
+        AiVpnSession session = AiVpnSession.start(config);
+        session.awaitReady();
+        session.close();
+    }
+
+    private static OpenRouterClient.Callback callback(final StringBuffer streamed) {
+        return new OpenRouterClient.Callback() {
+            public void onStatus(String message) { }
+            public void onThinking(String text) { }
+            public void onContent(String text) {
+                streamed.append(text);
+            }
+            public void onSuccess(String text) { }
+            public void onError(String message) {
+                throw new AssertionError(message);
+            }
+        };
     }
 
     private static void assertEquals(String expected, String actual, String label) {

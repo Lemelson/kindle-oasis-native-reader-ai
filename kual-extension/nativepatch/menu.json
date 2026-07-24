@@ -17,9 +17,9 @@
           "exitmenu": true
         },
         {
-          "name": "Install AI Note v24 streaming",
+          "name": "Install AI Note v25 instant session",
           "priority": 3,
-          "action": "./bin/install-ai-note-v24.sh",
+          "action": "./bin/install-ai-note-v25.sh",
           "exitmenu": true
         },
         {
