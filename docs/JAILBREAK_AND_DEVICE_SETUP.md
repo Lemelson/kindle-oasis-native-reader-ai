@@ -124,8 +124,8 @@ cannot directly overwrite those system jars.
 
 ## What Was Backed Up
 
-The USB-visible Kindle storage was backed up before patching. Original jars were
-also copied into this repo under:
+The USB-visible Kindle storage was backed up before patching. Original JARs were
+also copied into the local, Git-ignored workspace under:
 
 ```text
 from-kindle/native-reader-research/jars/
@@ -143,3 +143,7 @@ This project modifies Kindle software behavior on the user's own device. It does
 not include DRM bypass code, book decryption workflows, or instructions for
 extracting protected book content.
 
+This repository does not distribute the Nosebleed exploit, Amazon firmware,
+original or modified Amazon JARs, device dumps, or books. The setup record is
+historical and firmware-specific, not a guarantee that the same route remains
+available or lawful for every device, account, or jurisdiction.

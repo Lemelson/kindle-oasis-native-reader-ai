@@ -6,7 +6,7 @@ Device target: Kindle Oasis firmware 5.18.2.
 
 Original reader jar is preserved in multiple places:
 
-- Mac copy: `/Users/lemelson/kindle-oasis-jailbreak/native-reader-research/from-kindle/native-reader-research/jars/Reader-plugin.jar`
+- Local ignored copy: `from-kindle/native-reader-research/jars/Reader-plugin.jar`
 - Kindle USB/root-access backup: `/mnt/us/native-reader-research/backups/Reader-plugin.jar.orig.20260504-013002`
 
 Rollback over SSH:
@@ -63,7 +63,7 @@ Still replaces the Share slot with `Trans`, but opens `TRANSLATOR_CARD` through 
 
 Patch v2 has been built locally and copied to:
 
-- Mac artifact: `/Users/lemelson/kindle-oasis-jailbreak/native-reader-research/patch-work/patched-v2/Reader-plugin.jar`
+- Local artifact: `patch-work/patched-v2/Reader-plugin.jar`
 - Kindle USB-visible artifact: `/Volumes/Kindle/native-reader-research/patched/Reader-plugin.v2.jar`
 
 Patch v2 was installed through KUAL and verified on-device: the visible `Trans` button opens the native bottom Translation panel.
@@ -593,8 +593,8 @@ Device result: unsafe. This did not crash, but the selection menu stopped appear
 
 Built artifact:
 
-- v1 Mac artifact: `/Users/lemelson/kindle-oasis-jailbreak/native-reader-research/patch-work/patched-translator-ru/translator.jar`
-- v2 Mac artifact: `/Users/lemelson/kindle-oasis-jailbreak/native-reader-research/patch-work/patched-translator-ru-v2/translator.jar`
+- v1 local artifact: `patch-work/patched-translator-ru/translator.jar`
+- v2 local artifact: `patch-work/patched-translator-ru-v2/translator.jar`
 - v2 Kindle USB-visible artifact: `/Volumes/Kindle/native-reader-research/patched/translator.ru.v2.jar`
 
 ## KUAL installer
@@ -799,14 +799,15 @@ Built on the installed v25 source. Changes:
 - adds a hash-pinned v26 installer that replaces only the Reader plugin and SDK
   jars, plus two-jar normal and emergency rollback
 
-Built artifacts:
+Device-staged artifacts:
 
 - `patch-work/patched-ai-v26/ReaderSDK-impl.ai-v26.jar`
-- SHA-256: `ebe5a91d04ebe2fc18a817dcf4a2cabe225affa48ed3f5d488dbcd34861f2844`
+- SHA-256: `33e2a68fc9813c043ad6958be2495ed358a41dd1786e6b205975e7ea60b1ca1a`
 - `patch-work/patched-ai-v26/Reader-plugin.v26.jar`
 - SHA-256: `ec70bfbcdf276b071437e9fe8e1a4e50b68c2f1c03a2bf2eca6012edc3136466`
 
-The release artifacts are reproducible across repeated local builds. They and
-the final hash-pinned installer must be copied to the Kindle USB partition
-before installation. The system still runs v25 until the v26 KUAL action is
-launched; runtime validation is required after that installation.
+An earlier local SDK package accidentally included host test classes and is not
+a canonical build. Patched Amazon JARs are no longer distributed through GitHub
+Releases. v26 was installed on 2026-07-27. The approximately 2x AI geometry
+works, but tapping the book does not invoke Undo and leaves the highlight
+selected.

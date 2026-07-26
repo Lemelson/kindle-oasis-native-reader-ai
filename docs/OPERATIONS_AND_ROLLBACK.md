@@ -208,9 +208,9 @@ python3 patch-work/scripts/build_ai_note_patch.py
 Then copy both jars and the KUAL extension files to the mounted Kindle USB
 partition.
 
-## Git Notes
+## Repository
 
-Private remote:
+Public source repository:
 
 ```text
 https://github.com/Lemelson/kindle-oasis-native-reader-ai

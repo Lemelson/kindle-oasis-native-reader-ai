@@ -1,161 +1,230 @@
-# Kindle Oasis Native Reader AI Patch
+# Kindle Oasis Native Reader AI
 
-This repository documents and builds the native Kindle reader patches used on a
-Kindle Oasis running firmware 5.18.2.
+An experimental, firmware-specific modification that adds contextual AI help
+inside the stock Kindle Oasis reader.
 
-The current working product is not a KOReader plugin. It is a native Amazon
-reader modification:
+Select a passage, tap `AI`, and receive an in-place Russian explanation from
+Gemini or OpenRouter without leaving the book. The project also exposes Kindle's
+built-in Translation card in the main selection toolbar.
 
-- The visible selection toolbar has a `Translate` button for the built-in Amazon
-  Translation card.
-- The translation target is set to Russian by default.
-- The visible `Note` action is replaced with an `AI` action.
-- The `AI` action opens one embedded smart-card with prompt buttons at the top:
-  `Explain`, `Words`, `Wiki`, `Why`, and `Deep`. `Wiki` is an encyclopedia-style
-  identify mode for a highlighted person, term, place, event, work, or concept.
-- The AI card sends the selected text, book metadata, and surrounding context to
-  Gemini using `gemini-3.6-flash` first, with DeepSeek fallbacks.
-- A short tap on a prompt uses Flash; a long press uses DeepSeek V4 Pro.
-- Opening the AI card immediately starts `Explain`, so the normal path is one
-  tap on `AI`.
-- The AI card keeps its existing width but opens at roughly twice the stock
-  smart-card height; the native Translation card keeps its original size.
-- Tapping the visible book after opening AI or Translate runs the native
-  highlight Undo path, closes the overlay, and clears the selection. Ordinary
-  selections that never opened either card keep Amazon's original behavior.
-- Pressing another mode cancels the current HTTP stream and all future retries,
-  then starts only the newly selected request. The selected button is shown in
-  bold on a gray background.
-- Repeated taps on the same active mode/model are ignored, preventing accidental
-  duplicate API calls. A long press is a different model choice and can replace
-  an active short-tap request.
-- Xray starts in parallel with Kindle context extraction and remains available
-  until the AI card closes, so switching modes does not restart the tunnel.
-- Gemini streams only final-answer chunks into the card. Hidden Gemini thinking
-  stays hidden; status and fallback notices remain visible.
+[Latest release notes](https://github.com/Lemelson/kindle-oasis-native-reader-ai/releases/latest)
+· [Architecture](docs/NATIVE_READER_AI_ARCHITECTURE.md)
+· [Privacy](docs/PRIVACY_AND_DATA_FLOW.md)
+· [Recovery](docs/OPERATIONS_AND_ROLLBACK.md)
 
-Current local git checkpoint:
+> [!WARNING]
+> This is an expert research project for a user-owned Kindle Oasis on firmware
+> 5.18.2. It is not a general Kindle app, not a turnkey installer, and not
+> verified on other models or firmware. A failed system-JAR modification can
+> break the reader UI and require recovery.
+
+## Why This Exists
+
+Kindle's stock reader is good for uninterrupted reading, but understanding a
+difficult passage often means switching to a phone or another app. This project
+keeps that interaction inside the book:
 
 ```text
-current candidate: AI Note v26 large card + outside-tap Undo
-installed on device: AI Note v25 instant session + latest-request-wins
+select text -> tap AI -> read a contextual explanation -> continue reading
 ```
 
-## Device State
+The assistant can explain meaning, language, references, narrative purpose, or a
+deeper idea. It receives the selected fragment together with book metadata and
+surrounding context, then renders the answer in Kindle's native smart-card area.
 
-Target device:
+This is a modification of the existing reader interface, not a replacement
+reader and not a KOReader plugin.
+
+## What It Changes
+
+- Replaces the visible `Note` action with an `AI` action.
+- Opens an embedded card with `Explain`, `Words`, `Wiki`, `Why`, and `Deep`.
+- Starts `Explain` automatically for a one-tap normal workflow.
+- Uses Gemini first for a normal press and DeepSeek Pro first for a long press.
+- Cancels an older stream and its retries when a different mode is selected.
+- Keeps model and fallback status visible while answers stream.
+- Moves Kindle's native Translation action into the visible toolbar.
+- Sets the native Translation target to Russian.
+
+The project does not replace the Kindle reader, modify books, decrypt content,
+or bypass Kindle DRM.
+
+## Status and Compatibility
+
+| Component | Status |
+| --- | --- |
+| Target hardware | Kindle Oasis, likely KOA3 / KOA3W32C |
+| Target firmware | 5.18.2 only |
+| Stable device checkpoint | AI Note v25 was installed and used on the target device |
+| Current device build | v26 was installed on 2026-07-27 |
+| v26 runtime result | Large AI geometry works; outside-tap Undo is broken because Swing reports the visible Kindle card as hidden |
+| Current local candidate | v27 uses Kindle's actual SmartCard state, removes redundant repaint/layout work, and rechecks late geometry |
+| Other Kindle models or firmware | Untested and unsupported |
+
+Version tags preserve the development checkpoints. GitHub Releases contain
+release notes only; patched Amazon JARs are not distributed. Build outputs must
+be produced locally from original JARs obtained from a compatible device that
+you own or are authorized to modify.
+
+## Data and Privacy
+
+An AI request may send the following to the configured provider:
+
+- selected text;
+- up to roughly 5,000 words before and 3,000 words after the selection;
+- book title, authors, language, chapter, and Kindle positions;
+- the selected AI mode.
+
+Depending on configuration, requests go to Google Gemini and/or OpenRouter. The
+project contains no analytics or developer telemetry, but the external AI
+providers receive the request content under their own terms.
+
+The Kindle also stores the latest prompt, response, and error as plaintext files
+on USB-visible storage. API keys are stored in a local plaintext properties
+file. Do not use the AI feature with confidential documents, and treat the
+Kindle storage as sensitive.
+
+Read [Privacy and data flow](docs/PRIVACY_AND_DATA_FLOW.md) before configuring
+an API key.
+
+## What Is and Is Not in This Repository
+
+Tracked:
+
+- original project Java source and patch logic;
+- bytecode patch/build scripts;
+- KUAL install and rollback scripts;
+- tests, architecture notes, operations documentation, and version history.
+
+Not tracked or distributed:
+
+- Amazon firmware or original Amazon JARs;
+- generated or modified Amazon JARs;
+- Kindle books or decrypted book content;
+- API keys, device dumps, logs, or reading history;
+- private Xray/VLESS configuration;
+- the Nosebleed exploit or its implementation.
+
+The local ignored path
+`from-kindle/native-reader-research/jars/` is where an authorized user may place
+JARs copied from their own device for local building. Those files are not part
+of the Git repository.
+
+## Requirements
+
+This project assumes:
+
+- a compatible user-owned Kindle Oasis running firmware 5.18.2;
+- an existing jailbreak and KUAL/MRPI environment;
+- recoverable backups of the original reader JARs;
+- local access to those device-owned JARs;
+- Java with `javac --release 8` support and Python 3;
+- your own Gemini and/or OpenRouter credentials;
+- acceptance of the device, account, provider, warranty, and legal risks.
+
+The repository does not jailbreak a Kindle. The historical setup path is
+documented at [Jailbreak and device setup](docs/JAILBREAK_AND_DEVICE_SETUP.md),
+but it is not an exploit guide.
+
+## Build Model
+
+The source tooling creates local patched outputs from the user's own original
+JARs:
 
 ```text
-Model: Kindle Oasis, likely KOA3 / KOA3W32C
-Firmware: 5.18.2
-Special Offers: disabled
+your compatible Kindle JARs
+        +
+project source and bytecode patcher
+        |
+        v
+local ReaderSDK-impl and Reader-plugin build outputs
+        |
+        v
+hash-pinned KUAL install with rollback backups
 ```
 
-Installed foundation:
+See [Operations and rollback](docs/OPERATIONS_AND_ROLLBACK.md) for the current
+build shape and recovery procedure. Do not install a build when its expected
+hashes, source checkpoint, or target firmware do not match.
 
-- Nosebleed jailbreak
-- jailbreak hotfix
-- KUAL / MRPI
-- OTA blocker through `renameotabin`
-- USB-visible project files under `/mnt/us/native-reader-research`
-- KUAL extension under `/mnt/us/extensions/nativepatch`
-
-The project intentionally keeps the native Amazon reader. KOReader was discussed
-as the lower-risk plugin route, but the final project went after the native
-reader UI because the desired workflow was:
+## Repository Map
 
 ```text
-select text in the normal Kindle reader -> press AI or Translate -> get help in-place
-```
+README.md
+    Product purpose, status, safety boundary, and navigation.
 
-## Current User Workflow
-
-Native translation:
-
-```text
-select text -> Translate -> Amazon Translation card -> Russian target language
-```
-
-AI assistant:
-
-```text
-select text -> AI -> Explain starts automatically
-```
-
-The AI card automatically starts the normal Flash `Explain` request.
-Short-tapping another mode cancels the previous request and starts the normal
-Gemini-first chain. Long-pressing a mode for about 0.8 seconds cancels the
-previous request and starts with DeepSeek V4 Pro. Only the latest request can
-retry or update the card.
-
-## Repository Layout
-
-```text
 PATCHLOG.md
-    Detailed chronological patch log and hashes.
+    Chronological experiments, device results, hashes, and rollback history.
 
-from-kindle/native-reader-research/jars/
-    Local copies of original Kindle jar files pulled from the device.
-
-patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks/
-    Java sources for the AI card, OpenRouter client, config loader, logging,
-    and controller code injected into ReaderSDK-impl.jar.
+patch-work/src/
+    Original project Java source and integration code.
 
 patch-work/scripts/
-    Build and bytecode patch scripts.
+    Local bytecode patch and build tooling.
 
-kual-extension/nativepatch/
-    KUAL menu and install/rollback shell scripts copied to the Kindle.
+patch-work/tests/
+    Host-side tests for patch shape, geometry, request handling, and session logic.
+
+kual-extension/
+    KUAL menus and guarded install/rollback scripts.
 
 docs/
-    Human-readable project documentation.
+    Architecture, privacy, device setup, operations, and historical cleanup notes.
 ```
 
-## Current Build Artifacts
+## Safety and Legal Boundary
 
-Current AI jar:
+This repository is published for interoperability research, personal study, and
+modification of devices the user owns or is authorized to modify.
 
-```text
-patch-work/patched-ai-v26/ReaderSDK-impl.ai-v26.jar
-SHA-256: ebe5a91d04ebe2fc18a817dcf4a2cabe225affa48ed3f5d488dbcd34861f2844
+- It does not include Amazon firmware, proprietary Amazon JARs, books, DRM
+  circumvention, decryption, protected-content extraction, or a jailbreak
+  exploit.
+- It does not grant rights to Amazon software, firmware, services, trademarks,
+  or third-party models.
+- It is not affiliated with, endorsed by, or supported by Amazon.
+- Kindle and Amazon are trademarks of Amazon.com, Inc. or its affiliates.
+- Device modification may break functionality, affect warranty or service
+  access, and create recovery risk.
+- Laws, contracts, and platform terms vary by jurisdiction. Repository
+  availability is not legal advice or a representation that every use is
+  permitted.
 
-patch-work/patched-ai-v26/Reader-plugin.v26.jar
-SHA-256: ec70bfbcdf276b071437e9fe8e1a4e50b68c2f1c03a2bf2eca6012edc3136466
-```
+Use only your own lawfully obtained files and devices, preserve original
+backups, and evaluate your local obligations before proceeding.
 
-Current KUAL install action:
+## License
 
-```text
-KUAL -> Native Reader Patch -> Install AI Note v26 large card + dismiss
-```
+The author's original project code, scripts, tests, and documentation are
+source-available under the
+[PolyForm Noncommercial License 1.0.0](LICENSE.md).
 
-Use `Enable AI Diagnostics` before a provider routing test. In diagnostics
-mode, pressing any AI preset runs connectivity checks instead of a normal AI
-answer and writes `/mnt/us/native-reader-research/ai-diagnostics-last.txt`.
-Use `Disable AI Diagnostics` to return the same build to normal AI answers.
+This allows noncommercial use, study, modification, and distribution under the
+license terms. It is not the MIT License and is not an OSI-approved open-source
+license because commercial use is restricted.
 
-Safe rollback action:
+Commercial use, paid redistribution, resale, or commercial integration requires
+a separate written license. Contact:
+[Telegram @Lemelson](https://t.me/Lemelson).
 
-```text
-KUAL -> Native Reader Patch -> Rollback AI Note Patch
-```
+The license applies only to rights the licensor owns. Amazon firmware, JARs,
+APIs, trademarks, and other third-party material are excluded. See
+[NOTICE.md](NOTICE.md).
 
-## What We Did Not Do
+## Contact and Responsible Disclosure
 
-- We did not bypass Kindle DRM.
-- We did not modify Amazon book content.
-- We did not replace the whole Kindle reader.
-- We did not implement the Nosebleed exploit ourselves in this repository.
-- We did not prove or document Nosebleed internals beyond the public jailbreak
-  workflow. Treat exploit mechanism details such as memory corruption claims as
-  external research unless verified from primary sources.
-- Generated JARs, original Amazon JARs, API keys, and the private Xray/VLESS
-  configuration are intentionally excluded from Git. The source history,
-  installers, patch documentation, and reproducible build tooling are tracked.
+- Project and commercial licensing: [Telegram @Lemelson](https://t.me/Lemelson)
+- GitHub: [@Lemelson](https://github.com/Lemelson)
+- Security reports: follow [SECURITY.md](SECURITY.md)
 
-More detail:
+Please do not open a public issue containing API keys, device dumps, private book
+text, VPN configuration, or other sensitive material.
 
-- [Jailbreak and device setup](docs/JAILBREAK_AND_DEVICE_SETUP.md)
+## Documentation
+
+- [Privacy and data flow](docs/PRIVACY_AND_DATA_FLOW.md)
 - [Native reader AI architecture](docs/NATIVE_READER_AI_ARCHITECTURE.md)
 - [Operations and rollback](docs/OPERATIONS_AND_ROLLBACK.md)
-- [Device cleanup on 2026-07-24](docs/DEVICE_CLEANUP_2026-07-24.md)
+- [Jailbreak and device setup](docs/JAILBREAK_AND_DEVICE_SETUP.md)
+- [Patch history](PATCHLOG.md)
+- [Historical device cleanup](docs/DEVICE_CLEANUP_2026-07-24.md)
