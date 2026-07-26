@@ -48,6 +48,7 @@ public class ShareSelectedTextAction extends ReaderAction {
             Method openCard = smartCardDialog.getClass().getMethod(
                     "a", new Class[] { SelectionDialogCard.class, Boolean.TYPE });
             openCard.invoke(smartCardDialog, new Object[] { card, compact });
+            armAutoUndo(card);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -66,6 +67,19 @@ public class ShareSelectedTextAction extends ReaderAction {
             }
         }
         return null;
+    }
+
+    private void armAutoUndo(SelectionDialogCard card) {
+        try {
+            Class helperClass = Class.forName(
+                    "com.amazon.ebook.booklet.reader.plugin.notesandmarks."
+                    + "AutoUndoSelectionSession");
+            Method arm = helperClass.getMethod(
+                    "arm", new Class[] { SelectionDialogCard.class });
+            arm.invoke(null, new Object[] { card });
+        } catch (Throwable ignored) {
+            // Translation remains usable if the optional AI-side hook is absent.
+        }
     }
 
     private void forceRussianTargetLanguage() {

@@ -13,4 +13,5 @@ patch-work/resource-check/
 *.class
 *.err
 .DS_Store
+__pycache__/
 ai-assistant.properties

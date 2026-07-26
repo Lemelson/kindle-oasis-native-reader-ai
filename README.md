@@ -18,6 +18,11 @@ reader modification:
 - A short tap on a prompt uses Flash; a long press uses DeepSeek V4 Pro.
 - Opening the AI card immediately starts `Explain`, so the normal path is one
   tap on `AI`.
+- The AI card keeps its existing width but opens at roughly twice the stock
+  smart-card height; the native Translation card keeps its original size.
+- Tapping the visible book after opening AI or Translate runs the native
+  highlight Undo path, closes the overlay, and clears the selection. Ordinary
+  selections that never opened either card keep Amazon's original behavior.
 - Pressing another mode cancels the current HTTP stream and all future retries,
   then starts only the newly selected request. The selected button is shown in
   bold on a gray background.
@@ -32,7 +37,8 @@ reader modification:
 Current local git checkpoint:
 
 ```text
-current: AI Note v25 instant session + latest-request-wins
+current candidate: AI Note v26 large card + outside-tap Undo
+installed on device: AI Note v25 instant session + latest-request-wins
 ```
 
 ## Device State
@@ -110,17 +116,17 @@ docs/
 Current AI jar:
 
 ```text
-patch-work/patched-ai-v25/ReaderSDK-impl.ai-v25.jar
-SHA-256: fd9c02e517b6b04f1969f682a666fa81715b52bbee48ad321cba326da1da2124
+patch-work/patched-ai-v26/ReaderSDK-impl.ai-v26.jar
+SHA-256: ebe5a91d04ebe2fc18a817dcf4a2cabe225affa48ed3f5d488dbcd34861f2844
 
-patch-work/patched-v3/Reader-plugin.jar
-SHA-256: d978e1e97c7d2042176aa8d12e40e24582d335770e6141a14dffb9659fe1f907
+patch-work/patched-ai-v26/Reader-plugin.v26.jar
+SHA-256: ec70bfbcdf276b071437e9fe8e1a4e50b68c2f1c03a2bf2eca6012edc3136466
 ```
 
 Current KUAL install action:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v25 instant session
+KUAL -> Native Reader Patch -> Install AI Note v26 large card + dismiss
 ```
 
 Use `Enable AI Diagnostics` before a provider routing test. In diagnostics

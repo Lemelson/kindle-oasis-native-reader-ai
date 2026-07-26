@@ -46,7 +46,7 @@ removed. The active v22 artifact and candidate v24 artifact remain. Generated
 class directories were removed.
 
 Source history, build tooling, documentation, and version tags are archived in
-the private repository:
+the project repository:
 
 ```text
 https://github.com/Lemelson/kindle-oasis-native-reader-ai

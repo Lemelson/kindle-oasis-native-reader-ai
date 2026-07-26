@@ -15,17 +15,22 @@ If the Kindle is connected over USB, current artifacts live under:
 On Kindle, install through:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v25 instant session
+KUAL -> Native Reader Patch -> Install AI Note v26 large card + dismiss
 ```
 
 The installer:
 
-1. verifies required patched jars and config exist
-2. backs up current system jars under `/mnt/us/native-reader-research/backups`
+1. verifies the exact SHA-256 of both v26 jars and both rollback jars
+2. backs up the current Reader plugin and SDK jars under
+   `/mnt/us/native-reader-research/backups`
 3. remounts root read-write
-4. copies patched jars into `/opt/amazon/ebook/lib`
-5. restores root read-only
-6. reboots
+4. stages and atomically activates only `Reader-plugin.jar` and
+   `ReaderSDK-impl.jar`
+5. verifies both installed hashes and restores the backups if activation fails
+6. makes a best-effort read-only remount and reboots
+
+The v26 installer does not rewrite `translator.jar`, AI configuration, or VPN
+scripts.
 
 ## Current Config
 
@@ -103,7 +108,8 @@ Use this first for AI-specific problems:
 KUAL -> Native Reader Patch -> Rollback AI Note Patch
 ```
 
-This restores the original `ReaderSDK-impl.jar`.
+This restores the original `ReaderSDK-impl.jar` and the confirmed stable v3
+Reader plugin.
 
 If translation-specific changes are suspected:
 
@@ -138,17 +144,27 @@ It removes:
 - OpenRouter calls
 - AI smart-card
 
-## Current Stable AI State
+## Current AI States
 
-The current local candidate is:
+The connected Kindle currently has the confirmed v25 build installed:
 
 ```text
 AI Note v25 instant session + latest-request-wins
 ```
 
-It includes:
+The current local candidate is:
+
+```text
+AI Note v26 large card + outside-tap Undo
+```
+
+It keeps all v25 behavior and adds:
 
 - one embedded AI smart-card with top prompt buttons and lower output area
+- approximately 2x stock height for AI only, with the native Translate size
+  unchanged
+- native Undo when the book is tapped outside an open AI or Translate card
+- unchanged outside-tap behavior for ordinary selections
 - one-tap automatic Explain through Gemini 3.6 Flash
 - Gemini and OpenRouter final-answer streaming
 - short tap for the Gemini-first chain
@@ -156,8 +172,8 @@ It includes:
 - cancellation of the previous stream/retries when a new mode is selected
 - one Xray session kept alive until the AI card closes
 
-The connected Kindle still has v22 installed until v25 is explicitly copied
-and installed.
+The v26 jars require physical on-device validation after installation; host JVM
+tests cannot prove E-Ink layout or the Kindle touch event path.
 
 ## If Reader UI Freezes
 
@@ -175,18 +191,22 @@ reset can remove documents and homebrew launchers.
 
 ## Build Locally
 
-The AI jar is built with:
+The AI SDK jar and Reader plugin are built with:
 
 ```sh
-rm -rf patch-work/classes-ai-v25 patch-work/patched-ai-v25
-mkdir -p patch-work/classes-ai-v25
+rm -rf patch-work/classes-ai-v26 patch-work/patched-ai-v26
+mkdir -p patch-work/classes-ai-v26
 CP=$(printf '%s:' from-kindle/native-reader-research/jars/*.jar)
-javac --release 8 -cp "$CP" -d patch-work/classes-ai-v25 \
+javac --release 8 -cp "$CP" -d patch-work/classes-ai-v26 \
   $(find patch-work/stubs patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks -name '*.java' -print)
+javac --release 8 -cp "$CP:patch-work/classes-ai-v26" \
+  -d patch-work/classes-ai-v26 \
+  patch-work/src/com/amazon/ebook/booklet/reader/plugin/share/ShareSelectedTextAction.java
 python3 patch-work/scripts/build_ai_note_patch.py
 ```
 
-Then copy the jar and KUAL extension files to the mounted Kindle USB partition.
+Then copy both jars and the KUAL extension files to the mounted Kindle USB
+partition.
 
 ## Git Notes
 

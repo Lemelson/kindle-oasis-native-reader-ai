@@ -739,7 +739,7 @@ Built on the uninstalled v23 source. Changes:
 - keeps only current v22, candidate v24, diagnostics, VPN, stable translation,
   and rollback actions in the KUAL menu
 
-Device deployment: intentionally deferred. v22 remains installed.
+Device deployment: intentionally deferred. v22 remained installed.
 
 Built artifact:
 
@@ -769,9 +769,44 @@ Built on the uninstalled v24 source. Changes:
   presses, Gemini/OpenRouter SSE streaming, `thinkingLevel=high`, and the shared
   `6750` output-token limit
 
-Device deployment: intentionally deferred. v22 remains installed.
+Device deployment was initially deferred, then v25 was installed on 2026-07-24.
 
 Built artifact:
 
 - Mac artifact: `patch-work/patched-ai-v25/ReaderSDK-impl.ai-v25.jar`
 - SHA-256: `fd9c02e517b6b04f1969f682a666fa81715b52bbee48ad321cba326da1da2124`
+
+Device result: installed and used on the connected Oasis. The install log
+records the same SDK SHA-256.
+
+## AI Note v26 large card and outside-tap Undo
+
+Built on the installed v25 source. Changes:
+
+- doubles the AI-only smart-card height, capped to the physical screen, while
+  preserving its width
+- applies the target bounds to both Kindle's stored dialog geometry and the
+  already-posted live frame; Translate retains Amazon's stock geometry
+- arms a one-shot session only after AI or Translate opens successfully
+- intercepts the single firmware-5.18.2 book-tap close call that otherwise uses
+  `SelectionDialog.bQ(false)`
+- reuses Kindle's enabled `DeleteHighlightAction` for the exact native Undo
+  behavior, with `bQ(true)` as the safe selection-clear fallback
+- leaves ordinary selections, hidden/stale cards, drag handling, and the
+  existing quick-highlight `bQ(true)` branch unchanged
+- adds a fail-closed bytecode shape/offset assertion and JVM tests for geometry,
+  native Undo, fallback, hidden-card, and one-shot behavior
+- adds a hash-pinned v26 installer that replaces only the Reader plugin and SDK
+  jars, plus two-jar normal and emergency rollback
+
+Built artifacts:
+
+- `patch-work/patched-ai-v26/ReaderSDK-impl.ai-v26.jar`
+- SHA-256: `ebe5a91d04ebe2fc18a817dcf4a2cabe225affa48ed3f5d488dbcd34861f2844`
+- `patch-work/patched-ai-v26/Reader-plugin.v26.jar`
+- SHA-256: `ec70bfbcdf276b071437e9fe8e1a4e50b68c2f1c03a2bf2eca6012edc3136466`
+
+The release artifacts are reproducible across repeated local builds. They and
+the final hash-pinned installer must be copied to the Kindle USB partition
+before installation. The system still runs v25 until the v26 KUAL action is
+launched; runtime validation is required after that installation.

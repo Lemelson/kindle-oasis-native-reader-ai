@@ -8,9 +8,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 ORIGINAL_JAR = ROOT / "from-kindle/native-reader-research/jars/ReaderSDK-impl.jar"
-CLASSES_DIR = ROOT / "patch-work/classes-ai-v25"
-OUT_DIR = ROOT / "patch-work/patched-ai-v25"
-OUT_JAR = OUT_DIR / "ReaderSDK-impl.ai-v25.jar"
+ORIGINAL_READER_JAR = ROOT / "from-kindle/native-reader-research/jars/Reader-plugin.jar"
+CLASSES_DIR = ROOT / "patch-work/classes-ai-v26"
+OUT_DIR = ROOT / "patch-work/patched-ai-v26"
+OUT_JAR = OUT_DIR / "ReaderSDK-impl.ai-v26.jar"
+OUT_READER_JAR = OUT_DIR / "Reader-plugin.v26.jar"
+GENERATED_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 
 ADD_NOTE_CLASS = (
     "com/amazon/ebook/booklet/reader/plugin/notesandmarks/"
@@ -26,6 +29,17 @@ PROVIDER_CLASS = (
 )
 AI_CONTROLLER_CLASS = (
     "com/amazon/ebook/booklet/reader/plugin/notesandmarks/AiAssistantController"
+)
+AUTO_UNDO_CLASS = (
+    "com/amazon/ebook/booklet/reader/plugin/notesandmarks/AutoUndoSelectionSession"
+)
+CONTENT_PANEL_MOUSE_CLASS = "com/amazon/ebook/booklet/reader/impl/ContentPanel$d"
+SELECTION_DIALOG_CLASS = "com/amazon/ebook/booklet/reader/sdk/ui/SelectionDialog"
+BOOK_TAP_METHOD = "mouseClicked"
+BOOK_TAP_METHOD_DESC = "(Ljava/awt/event/MouseEvent;)V"
+BOOK_TAP_EXPECTED_OFFSETS = (281,)
+SHARE_ACTION_CLASS = (
+    "com/amazon/ebook/booklet/reader/plugin/share/ShareSelectedTextAction"
 )
 
 
@@ -175,6 +189,18 @@ class ConstantPool:
                 return index
         raise ValueError(f"methodref not found: {class_name}.{method_name}{desc}")
 
+    def find_interface_methodref(self, class_name, method_name, desc):
+        for index, entry in enumerate(self.entries):
+            if entry is None or entry["tag"] != 11:
+                continue
+            cls = self.class_name(entry["refs"][0])
+            name, method_desc = self.name_and_type(entry["refs"][1])
+            if cls == class_name and name == method_name and method_desc == desc:
+                return index
+        raise ValueError(
+            f"interface methodref not found: {class_name}.{method_name}{desc}"
+        )
+
     def _append(self, entry):
         self.entries.append(entry)
         return len(self.entries) - 1
@@ -222,6 +248,135 @@ def skip_attributes(data, pos):
         length, pos = read_u4(data, pos)
         pos += length
     return pos
+
+
+def method_code_range(data, cp, method_name, method_desc):
+    pos = cp.cp_end
+    pos += 6  # access_flags, this_class, super_class
+    interfaces_count, pos = read_u2(data, pos)
+    pos += interfaces_count * 2
+
+    fields_count, pos = read_u2(data, pos)
+    for _ in range(fields_count):
+        pos += 6
+        pos = skip_attributes(data, pos)
+
+    methods_count, pos = read_u2(data, pos)
+    matches = []
+    for _ in range(methods_count):
+        pos += 2  # access_flags
+        name_index, pos = read_u2(data, pos)
+        desc_index, pos = read_u2(data, pos)
+        attributes_count, pos = read_u2(data, pos)
+        name = cp.utf8(name_index)
+        desc = cp.utf8(desc_index)
+        for _attr in range(attributes_count):
+            attr_name_index, pos = read_u2(data, pos)
+            attr_length, pos = read_u4(data, pos)
+            attr_body_start = pos
+            if (name == method_name
+                    and desc == method_desc
+                    and cp.utf8(attr_name_index) == "Code"):
+                code_length = struct.unpack(
+                    ">I", data[attr_body_start + 4:attr_body_start + 8]
+                )[0]
+                code_start = attr_body_start + 8
+                matches.append((code_start, code_start + code_length))
+            pos += attr_length
+
+    if len(matches) != 1:
+        raise ValueError(
+            f"expected exactly 1 {method_name}{method_desc} Code attribute, "
+            f"found {len(matches)}"
+        )
+    return matches[0]
+
+
+def content_panel_book_tap_pattern(data, cp):
+    selection_state_field = cp.find_fieldref(
+        CONTENT_PANEL_MOUSE_CLASS, "aOa", "Z"
+    )
+    native_close = cp.find_interface_methodref(
+        SELECTION_DIALOG_CLASS, "bQ", "(Z)V"
+    )
+    return (
+        b"\x19\x04"                       # aload 4 (SelectionDialog)
+        + b"\x2a"                         # aload_0
+        + b"\xb4" + u2(selection_state_field)  # getfield aOa:Z
+        + b"\xb9" + u2(native_close) + b"\x02\x00"  # invokeinterface bQ
+    )
+
+
+def content_panel_book_tap_replacement(cp):
+    selection_state_field = cp.find_fieldref(
+        CONTENT_PANEL_MOUSE_CLASS, "aOa", "Z"
+    )
+    hook = cp.add_methodref(
+        AUTO_UNDO_CLASS,
+        "handleBookTap",
+        f"(L{SELECTION_DIALOG_CLASS};Z)V",
+    )
+    return (
+        b"\x19\x04"                       # aload 4 (SelectionDialog)
+        + b"\x2a"                         # aload_0
+        + b"\xb4" + u2(selection_state_field)  # getfield aOa:Z
+        + b"\xb8" + u2(hook)              # invokestatic handleBookTap
+        + b"\x00\x00"                     # preserve original bytecode length
+    )
+
+
+def find_pattern_offsets(code, pattern):
+    offsets = []
+    start = 0
+    while True:
+        offset = code.find(pattern, start)
+        if offset < 0:
+            return offsets
+        offsets.append(offset)
+        start = offset + len(pattern)
+
+
+def patch_content_panel_book_tap_class(original):
+    cp = ConstantPool(original)
+    code_start, code_end = method_code_range(
+        original, cp, BOOK_TAP_METHOD, BOOK_TAP_METHOD_DESC
+    )
+    original_code = original[code_start:code_end]
+    pattern = content_panel_book_tap_pattern(original, cp)
+    offsets = find_pattern_offsets(original_code, pattern)
+    if tuple(offsets) != BOOK_TAP_EXPECTED_OFFSETS:
+        raise ValueError(
+            "expected exactly 1 native book-tap close call at offsets "
+            f"{BOOK_TAP_EXPECTED_OFFSETS}, found {tuple(offsets)}"
+        )
+
+    replacement = content_panel_book_tap_replacement(cp)
+    if len(replacement) != len(pattern):
+        raise ValueError("book-tap hook must preserve bytecode length")
+
+    patched_code = bytearray(original_code)
+    for offset in offsets:
+        patched_code[offset:offset + len(pattern)] = replacement
+
+    body = bytearray(original[cp.cp_end:])
+    relative_start = code_start - cp.cp_end
+    relative_end = code_end - cp.cp_end
+    body[relative_start:relative_end] = patched_code
+
+    patched = bytearray()
+    patched.extend(original[:8])
+    patched.extend(cp.bytes())
+    patched.extend(body)
+    return bytes(patched)
+
+
+def count_content_panel_book_tap_hooks(data):
+    cp = ConstantPool(data)
+    code_start, code_end = method_code_range(
+        data, cp, BOOK_TAP_METHOD, BOOK_TAP_METHOD_DESC
+    )
+    replacement = content_panel_book_tap_replacement(cp)
+    return len(find_pattern_offsets(data[code_start:code_end], replacement))
 
 
 def patch_add_note_class(original):
@@ -316,12 +471,27 @@ def class_files_to_add():
     return files
 
 
+def write_generated_entry(target, name, data):
+    entry = zipfile.ZipInfo(name, GENERATED_ZIP_TIMESTAMP)
+    entry.compress_type = zipfile.ZIP_DEFLATED
+    entry.create_system = 3
+    entry.external_attr = 0o100644 << 16
+    target.writestr(entry, data)
+
+
 def build_jar():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(ORIGINAL_JAR, "r") as source:
         original_class = source.read(ADD_NOTE_CLASS + ".class")
         patched_class = patch_add_note_class(original_class)
+        content_panel_class = patch_content_panel_book_tap_class(
+            source.read(CONTENT_PANEL_MOUSE_CLASS + ".class")
+        )
         extra_classes = class_files_to_add()
+        if AUTO_UNDO_CLASS + ".class" not in extra_classes:
+            raise ValueError(
+                "compiled AutoUndoSelectionSession.class is required for book-tap hook"
+            )
 
         tmp_jar = OUT_JAR.with_suffix(".jar.tmp")
         with zipfile.ZipFile(tmp_jar, "w", zipfile.ZIP_DEFLATED) as target:
@@ -329,11 +499,38 @@ def build_jar():
                 data = source.read(item.filename)
                 if item.filename == ADD_NOTE_CLASS + ".class":
                     data = patched_class
+                elif item.filename == CONTENT_PANEL_MOUSE_CLASS + ".class":
+                    data = content_panel_class
                 target.writestr(item, data)
             for name, data in extra_classes.items():
-                target.writestr(name, data)
+                write_generated_entry(target, name, data)
         shutil.move(str(tmp_jar), str(OUT_JAR))
+
+    share_class_path = CLASSES_DIR / (SHARE_ACTION_CLASS + ".class")
+    if not share_class_path.is_file():
+        raise ValueError(
+            "compiled ShareSelectedTextAction.class is required for Translate auto undo"
+        )
+
+    with zipfile.ZipFile(ORIGINAL_READER_JAR, "r") as source:
+        tmp_reader_jar = OUT_READER_JAR.with_suffix(".jar.tmp")
+        replaced = False
+        with zipfile.ZipFile(tmp_reader_jar, "w", zipfile.ZIP_DEFLATED) as target:
+            for item in source.infolist():
+                data = source.read(item.filename)
+                if item.filename == SHARE_ACTION_CLASS + ".class":
+                    data = share_class_path.read_bytes()
+                    replaced = True
+                target.writestr(item, data)
+        if not replaced:
+            tmp_reader_jar.unlink(missing_ok=True)
+            raise ValueError(
+                "original Reader-plugin.jar does not contain ShareSelectedTextAction.class"
+            )
+        shutil.move(str(tmp_reader_jar), str(OUT_READER_JAR))
+
     print(OUT_JAR)
+    print(OUT_READER_JAR)
 
 
 if __name__ == "__main__":
