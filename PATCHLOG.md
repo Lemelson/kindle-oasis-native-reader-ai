@@ -872,3 +872,48 @@ Device deployment: both v27 artifacts and the hash-pinned KUAL installer were
 copied to the Kindle USB partition and verified byte-for-byte on 2026-07-27.
 The installer completed successfully on 2026-07-27 and was re-run successfully
 on 2026-08-03; the system currently runs v27.
+
+## AI Note v28 direct Serbia
+
+Built from v27 after moving the device from Russia to Serbia.
+
+Network changes:
+
+- removes `AiVpnSession` and all Xray start/stop lifecycle calls from the
+  current runtime
+- removes HTTP proxy construction and always opens direct HTTPS connections
+- removes VPN properties from the current example configuration
+- removes the Start/Stop VPN actions from the current KUAL menu
+- the v28 installer backs up the device configuration and sets the legacy
+  `vpn_enabled=false` marker; historical VPN files remain available only for a
+  deliberate v27 rollback
+
+Direct Mac verification on 2026-08-09:
+
+- direct egress was Serbia (`RS`) with Cloudflare WARP off
+- the exact Java `AiProviderChainClient` normal path completed through
+  `gemini-3.6-flash`
+- the exact Java Pro path completed through OpenRouter with
+  `deepseek/deepseek-v4-flash-0731`
+- both configured Gemini keys authenticated successfully through `models.list`
+- an earlier isolated generation attempt on the second Gemini key returned a
+  transient HTTP 503 `UNAVAILABLE`, not an authentication or region error
+
+Google's current Gemini API region documentation lists Serbia as supported.
+The live Java verification is the runtime proof for this device configuration;
+provider availability can still fail transiently and remains covered by the
+existing retry/fallback chain.
+
+Built artifacts:
+
+- `patch-work/patched-ai-v28/ReaderSDK-impl.ai-v28.jar`
+- SHA-256: `78cd5242285ad6e3d993b5737b0b3bc6b236557e1db2839178fd4077fe6cb954`
+- `patch-work/patched-ai-v28/Reader-plugin.v28.jar`
+- SHA-256: `e43a30553e5fc1f28b83493da222772de14b4e80a91fc8120bee9bfd39c80f4e`
+
+Host compilation and tests passed. Both v28 artifacts, the hash-pinned
+installer, and the current KUAL menu were copied to the connected Kindle and
+verified byte-for-byte on 2026-08-09. The device configuration was backed up and
+changed to `vpn_enabled=false`. The v28 KUAL action has not yet replaced the
+system JARs, so physical-device installation and E-Ink interaction validation
+remain separate steps.

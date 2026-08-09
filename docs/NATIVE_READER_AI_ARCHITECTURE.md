@@ -131,8 +131,8 @@ Configuration path on Kindle:
 Current important values:
 
 ```text
-model=deepseek/deepseek-v4-flash
-pro_model=deepseek/deepseek-v4-pro
+model=deepseek/deepseek-v4-flash-0731
+pro_model=deepseek/deepseek-v4-flash-0731
 pro_fallback_model=xiaomi/mimo-v2.5-pro
 base_url=https://openrouter.ai/api/v1/chat/completions
 temperature=0.2
@@ -206,10 +206,9 @@ Retry/fallback status remains visible in the card.
 
 Only one provider-chain request is active globally. A new short or long press
 disconnects the previous HTTP connection, interrupts any retry wait, and
-invalidates its callbacks before starting the new request. The Xray session is
-not restarted between modes. Repeated taps for the same active mode and model
-are ignored; changing the mode or changing short tap to long press replaces the
-request.
+invalidates its callbacks before starting the new request. Repeated taps for the
+same active mode and model are ignored; changing the mode or changing short tap
+to long press replaces the request.
 
 ## Streaming Behavior
 
@@ -232,19 +231,19 @@ UI behavior:
 4. Cache the completed final answer for the selected mode and selection.
 5. Keep the existing 8pt output font.
 
-## VPN Session Lifetime
+## Direct Networking
 
-The card owns one Xray session:
+v28 opens ordinary direct HTTPS connections:
 
 ```text
-AI pressed -> Xray warm-up + context capture in parallel
-request/mode switches -> same Xray session
-AI card closes -> cancel request -> stop Xray in background
+AI pressed -> capture context
+request -> direct HTTPS to Gemini or OpenRouter
+AI card closes -> cancel the active HTTP request
 ```
 
-Normal shutdown sends Xray a terminate signal and waits up to three seconds.
-Only a process that does not exit in that interval is force-stopped. The wait
-happens on a background thread and does not block the Kindle UI.
+The current runtime has no Xray start/stop lifecycle, HTTP proxy construction,
+or VPN configuration fields. v27 remains in Git history as the final VPN-based
+release for users who explicitly need that older route.
 
 Reasoning text is capped visually to the most recent 12000 characters so very
 long thinking traces do not grow the UI without bound.

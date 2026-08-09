@@ -74,7 +74,6 @@ final class AiProviderChainClient {
     static Request send(
             ReaderSDK sdk,
             final OpenRouterConfig config,
-            final AiVpnSession vpnSession,
             final String userPrompt,
             final boolean proFirst,
             final OpenRouterClient.Callback callback) {
@@ -82,7 +81,7 @@ final class AiProviderChainClient {
         Thread thread = new Thread(new Runnable() {
             public void run() {
                 try {
-                    runChain(config, vpnSession, userPrompt, proFirst, callback, request);
+                    runChain(config, userPrompt, proFirst, callback, request);
                 } finally {
                     synchronized (REQUEST_LOCK) {
                         if (activeRequest == request) {
@@ -110,7 +109,6 @@ final class AiProviderChainClient {
 
     private static void runChain(
             OpenRouterConfig config,
-            AiVpnSession vpnSession,
             String userPrompt,
             boolean proFirst,
             OpenRouterClient.Callback callback,
@@ -120,18 +118,6 @@ final class AiProviderChainClient {
         }
         AiAssistantLog.writeLastPrompt(proFirst ? config.proModel : config.geminiModels, userPrompt);
         try {
-            if (config.vpnEnabled) {
-                callback.onStatus("Подключаю…");
-                if (vpnSession != null) {
-                    vpnSession.awaitReady();
-                } else {
-                    OpenRouterClient.ensureVpnProxy(config);
-                }
-            }
-            if (request.isCancelled()) {
-                return;
-            }
-
             if (proFirst) {
                 if (tryOpenRouter(config, userPrompt, callback, request,
                         config.proModel,

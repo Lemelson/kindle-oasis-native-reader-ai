@@ -29,50 +29,44 @@
           "exitmenu": true
         },
         {
-          "name": "Install AI Note v27 reliable dismiss",
+          "name": "Install AI Note v27 reliable dismiss (VPN)",
           "priority": 5,
           "action": "./bin/install-ai-note-v27.sh",
           "exitmenu": true
         },
         {
-          "name": "Start AI VPN Proxy",
+          "name": "Install AI Note v28 direct Serbia",
           "priority": 6,
-          "action": "./bin/start-ai-vpn.sh",
-          "exitmenu": true
-        },
-        {
-          "name": "Stop AI VPN Proxy",
-          "priority": 7,
-          "action": "./bin/stop-ai-vpn.sh",
+          "action": "./bin/install-ai-note-v28.sh",
           "exitmenu": true
         },
         {
           "name": "Enable AI Diagnostics",
-          "priority": 8,
+          "priority": 7,
           "action": "./bin/enable-ai-diagnostics.sh",
           "exitmenu": true
         },
         {
           "name": "Disable AI Diagnostics",
-          "priority": 9,
+          "priority": 8,
           "action": "./bin/disable-ai-diagnostics.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback Reader Plugin",
-          "priority": 10,
+          "priority": 9,
           "action": "./bin/rollback.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback AI Note Patch",
-          "priority": 11,
+          "priority": 10,
           "action": "./bin/rollback-ai.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback Translator Jar",
-          "priority": 12,
+          "priority": 11,
           "action": "./bin/rollback-translator.sh",
           "exitmenu": true
         }

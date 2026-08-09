@@ -34,7 +34,6 @@ final class AiAssistantCard extends SelectionDialogCard {
     private final ReaderSDK sdk;
     private final AiAssistantController.SelectionData selection;
     private final OpenRouterConfig config;
-    private final AiVpnSession vpnSession;
     private final Map cachedResponses = new HashMap();
     private final Map statusTexts = new HashMap();
     private final Map requestIds = new HashMap();
@@ -51,12 +50,10 @@ final class AiAssistantCard extends SelectionDialogCard {
     AiAssistantCard(
             ReaderSDK sdk,
             AiAssistantController.SelectionData selection,
-            OpenRouterConfig config,
-            AiVpnSession vpnSession) {
+            OpenRouterConfig config) {
         this.sdk = sdk;
         this.selection = selection;
         this.config = config;
-        this.vpnSession = vpnSession;
         buildUi();
     }
 
@@ -220,7 +217,7 @@ final class AiAssistantCard extends SelectionDialogCard {
             config.proRequest = useProModel;
             if (config.diagnosticsEnabled) {
                 updateStatus(key, requestId, "Проверяю подключение…");
-                AiConnectivityDiagnostics.run(config, vpnSession, new AiConnectivityDiagnostics.Callback() {
+                AiConnectivityDiagnostics.run(config, new AiConnectivityDiagnostics.Callback() {
                     public void onUpdate(final String text) {
                         sdk.invokeLater(new Runnable() {
                             public void run() {
@@ -249,7 +246,7 @@ final class AiAssistantCard extends SelectionDialogCard {
             final long[] lastThinkingUpdateMs = new long[] { 0L };
             final long[] lastContentUpdateMs = new long[] { 0L };
             activeRequest = AiProviderChainClient.send(
-                    sdk, config, vpnSession, userPrompt, useProModel, new OpenRouterClient.Callback() {
+                    sdk, config, userPrompt, useProModel, new OpenRouterClient.Callback() {
                 public void onStatus(final String message) {
                     sdk.invokeLater(new Runnable() {
                         public void run() {
@@ -356,7 +353,6 @@ final class AiAssistantCard extends SelectionDialogCard {
         sessionClosed = true;
         cancelActiveRequest();
         currentRequestId = ++requestSerial;
-        vpnSession.close();
     }
 
     private void updateActiveButton() {

@@ -35,8 +35,9 @@ local prompt construction on Kindle
 streamed response shown in the native reader card
 ```
 
-The optional local Xray process only changes the network route. It does not make
-the request content private from the selected AI provider.
+v28 connects directly to the selected providers. The previous v27 release could
+route requests through a local Xray process; that changed the network route but
+did not make request content private from the selected AI provider.
 
 ## Content Collected for a Request
 
@@ -61,8 +62,7 @@ Depending on local configuration:
 
 - Google receives Gemini requests;
 - OpenRouter receives fallback or explicitly selected OpenRouter requests;
-- the model provider selected through OpenRouter may process the request;
-- a user-configured network or Xray provider may carry encrypted traffic.
+- the model provider selected through OpenRouter may process the request.
 
 Provider retention, training, account, region, and abuse-monitoring rules are
 controlled by those providers, not this repository. Review their current terms
@@ -117,8 +117,9 @@ serial/DSN, UUID, MAC address, public VPN endpoint, private key, Telegram token,
 book file, device dump, original Amazon JAR, or generated Amazon JAR was found in
 Git history.
 
-The example OpenRouter key is an explicit non-working placeholder. Localhost
-`127.0.0.1:18080` is the device-local proxy endpoint, not a public server.
+The example OpenRouter key is an explicit non-working placeholder. Historical
+v27 references to localhost `127.0.0.1:18080` describe a device-local proxy
+endpoint, not a public server.
 
 Public issues and pull requests must not include private runtime files. Use the
 private reporting process in [SECURITY.md](../SECURITY.md) for sensitive

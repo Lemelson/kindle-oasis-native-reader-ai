@@ -38,23 +38,20 @@ final class AiAssistantController {
         }
 
         OpenRouterConfig config = OpenRouterConfig.load();
-        AiVpnSession vpnSession = AiVpnSession.start(config);
         try {
             AiAssistantLog.write("ai action start");
             final SelectionData selection = SelectionData.capture(sdk);
             AiAssistantLog.write("selection captured length=" + selection.textLength());
             if (!selection.hasText()) {
-                vpnSession.close();
                 showMessage(sdk, "No selected text found.");
                 return;
             }
 
-            AiAssistantCard card = new AiAssistantCard(sdk, selection, config, vpnSession);
+            AiAssistantCard card = new AiAssistantCard(sdk, selection, config);
             openSmartCard(sdk, card);
             card.startDefault();
             AiAssistantLog.write("ai card opened");
         } catch (Throwable t) {
-            vpnSession.close();
             AiAssistantLog.write("ai action failed: " + t.toString());
             showMessage(sdk, "AI failed. Use KUAL rollback if reader acts oddly.");
         }

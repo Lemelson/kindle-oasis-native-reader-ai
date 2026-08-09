@@ -18,23 +18,15 @@ final class AiConnectivityDiagnostics {
 
     static void run(
             final OpenRouterConfig config,
-            final AiVpnSession vpnSession,
             final Callback callback) {
         Thread thread = new Thread(new Runnable() {
             public void run() {
                 StringBuffer report = new StringBuffer();
                 append(report, "AI connectivity diagnostics");
-                append(report, "VPN: " + (config.vpnEnabled ? "enabled" : "disabled"));
+                append(report, "Network: direct");
                 callback.onUpdate(report.toString());
 
                 try {
-                    if (config.vpnEnabled) {
-                        append(report, "Starting VPN proxy...");
-                        callback.onUpdate(report.toString());
-                        vpnSession.awaitReady();
-                        append(report, "VPN proxy: OK " + config.vpnProxyHost + ":" + config.vpnProxyPort);
-                    }
-
                     testOpenRouter(config, report, callback);
                     testGeminiModelsList(config, report, callback);
                     testGeminiGenerate(config, report, callback);

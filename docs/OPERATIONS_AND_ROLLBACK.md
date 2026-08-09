@@ -15,22 +15,26 @@ If the Kindle is connected over USB, current artifacts live under:
 On Kindle, install through:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v27 reliable dismiss
+KUAL -> Native Reader Patch -> Install AI Note v28 direct Serbia
 ```
 
 The installer:
 
-1. verifies the exact SHA-256 of both v27 jars and both rollback jars
+1. verifies the exact SHA-256 of both v28 jars and both rollback jars
 2. backs up the current Reader plugin and SDK jars under
    `/mnt/us/native-reader-research/backups`
-3. remounts root read-write
-4. stages and atomically activates only `Reader-plugin.jar` and
+3. backs up `ai-assistant.properties` and sets the legacy
+   `vpn_enabled=false` marker
+4. remounts root read-write
+5. stages and atomically activates only `Reader-plugin.jar` and
    `ReaderSDK-impl.jar`
-5. verifies both installed hashes and restores the backups if activation fails
-6. makes a best-effort read-only remount and reboots
+6. verifies both installed hashes and restores the JAR and configuration
+   backups if activation fails
+7. makes a best-effort read-only remount and reboots
 
-The v27 installer does not rewrite `translator.jar`, AI configuration, or VPN
-scripts.
+The v28 installer does not rewrite `translator.jar` or delete historical VPN
+files needed by v27. The v28 runtime ignores those files and contains no VPN
+start, stop, or proxy path.
 
 ## Current Config
 
@@ -50,8 +54,8 @@ Current shape:
 
 ```text
 api_key=...
-model=deepseek/deepseek-v4-flash
-pro_model=deepseek/deepseek-v4-pro
+model=deepseek/deepseek-v4-flash-0731
+pro_model=deepseek/deepseek-v4-flash-0731
 pro_fallback_model=xiaomi/mimo-v2.5-pro
 base_url=https://openrouter.ai/api/v1/chat/completions
 temperature=0.2
@@ -59,11 +63,7 @@ max_tokens=6750
 timeout_ms=45000
 reasoning_effort=high
 reasoning_exclude=false
-vpn_enabled=true
-vpn_proxy_host=127.0.0.1
-vpn_proxy_port=18080
-vpn_start_script=/mnt/us/native-reader-research/vpn/start-ai-vpn.sh
-vpn_stop_script=/mnt/us/native-reader-research/vpn/stop-ai-vpn.sh
+vpn_enabled=false
 diagnostics_enabled=false
 diagnostic_attempts=2
 gemini_api_key=...
@@ -146,17 +146,19 @@ It removes:
 
 ## Current AI States
 
-The connected Kindle currently has v27 installed. Its configuration has
-`vpn_enabled=true`, so this previous release starts the local Xray tunnel before
-Gemini or OpenRouter requests and stops it when the AI card closes.
+The connected Kindle system JARs currently run v27, but the USB configuration
+has already been changed to `vpn_enabled=false`, so v27 now uses its direct
+connection branch. The v28 artifacts and KUAL action are staged and verified on
+the USB partition; running the v28 KUAL action is still required to replace the
+system JARs.
 
-The installed build is:
+The current local candidate is:
 
 ```text
-AI Note v27 reliable dismiss
+AI Note v28 direct Serbia
 ```
 
-It keeps the v26 large-card behavior and:
+It keeps the v27 reliable dismiss and large-card behavior and:
 
 - one embedded AI smart-card with top prompt buttons and lower output area
 - approximately 2x stock height for AI only, with the native Translate size
@@ -173,9 +175,9 @@ It keeps the v26 large-card behavior and:
 - short tap for the Gemini-first chain
 - long press for DeepSeek V4 Pro
 - cancellation of the previous stream/retries when a new mode is selected
-- one Xray session kept alive until the AI card closes
+- direct HTTPS connections with no Xray lifecycle or HTTP proxy path
 
-The v27 jars require physical on-device validation after installation; host JVM
+The v28 jars require physical on-device validation after installation; host JVM
 tests cannot prove E-Ink layout or the Kindle touch event path.
 
 ## If Reader UI Freezes
@@ -197,13 +199,13 @@ reset can remove documents and homebrew launchers.
 The AI SDK jar and Reader plugin are built with:
 
 ```sh
-rm -rf patch-work/classes-ai-v27 patch-work/patched-ai-v27
-mkdir -p patch-work/classes-ai-v27
+rm -rf patch-work/classes-ai-v28 patch-work/patched-ai-v28
+mkdir -p patch-work/classes-ai-v28
 CP=$(printf '%s:' from-kindle/native-reader-research/jars/*.jar)
-javac --release 8 -cp "$CP" -d patch-work/classes-ai-v27 \
+javac --release 8 -cp "$CP" -d patch-work/classes-ai-v28 \
   $(find patch-work/stubs patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks -name '*.java' -print)
-javac --release 8 -cp "$CP:patch-work/classes-ai-v27" \
-  -d patch-work/classes-ai-v27 \
+javac --release 8 -cp "$CP:patch-work/classes-ai-v28" \
+  -d patch-work/classes-ai-v28 \
   patch-work/src/com/amazon/ebook/booklet/reader/plugin/share/ShareSelectedTextAction.java
 python3 patch-work/scripts/build_ai_note_patch.py
 ```

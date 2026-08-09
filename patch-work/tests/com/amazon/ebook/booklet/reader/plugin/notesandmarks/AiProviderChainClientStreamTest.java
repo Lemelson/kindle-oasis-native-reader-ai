@@ -33,7 +33,6 @@ public final class AiProviderChainClientStreamTest {
         }
         testCancelledGeminiStream();
         testOpenRouterStream();
-        testVpnDisabledSession();
         System.out.println("AiProviderChainClientStreamTest OK");
     }
 
@@ -76,14 +75,6 @@ public final class AiProviderChainClientStreamTest {
         assertEquals("Готово", answer, "OpenRouter answer");
         assertEquals(answer, streamed.toString(), "OpenRouter streamed chunks");
         assertEquals("thinking", reasoning.toString(), "OpenRouter reasoning");
-    }
-
-    private static void testVpnDisabledSession() throws Exception {
-        OpenRouterConfig config = new OpenRouterConfig();
-        config.vpnEnabled = false;
-        AiVpnSession session = AiVpnSession.start(config);
-        session.awaitReady();
-        session.close();
     }
 
     private static OpenRouterClient.Callback callback(final StringBuffer streamed) {

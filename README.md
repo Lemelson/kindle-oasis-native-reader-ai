@@ -56,9 +56,10 @@ or bypass Kindle DRM.
 | Target hardware | Kindle Oasis, likely KOA3 / KOA3W32C |
 | Target firmware | 5.18.2 only |
 | Stable device checkpoint | AI Note v25 was installed and used on the target device |
-| Current device build | v26 was installed on 2026-07-27 |
-| v26 runtime result | Large AI geometry works; outside-tap Undo is broken because Swing reports the visible Kindle card as hidden |
-| Current local candidate | v27 uses Kindle's actual SmartCard state, removes redundant repaint/layout work, and rechecks late geometry |
+| Current device build | v27 was installed on 2026-07-27 and reinstalled on 2026-08-03 |
+| Previous network behavior | v27 starts and stops a local Xray tunnel when `vpn_enabled=true` |
+| Current device network setting | `vpn_enabled=false`; v27 therefore uses direct HTTPS while v28 awaits KUAL installation |
+| Current staged candidate | v28 keeps v27 behavior but removes the VPN lifecycle and proxy path for direct use from Serbia |
 | Other Kindle models or firmware | Untested and unsupported |
 
 Version tags preserve the development checkpoints. GitHub Releases contain
