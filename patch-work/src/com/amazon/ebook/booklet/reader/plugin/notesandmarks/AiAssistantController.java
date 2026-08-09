@@ -74,17 +74,30 @@ final class AiAssistantController {
 
     private static void openSmartCard(ReaderSDK sdk, SelectionDialogCard card) throws Exception {
         SelectionDialog dialog = sdk.Jl().HF();
-        Object smartCardDialog = getField(dialog, "bBS");
+        final Object smartCardDialog = getField(dialog, "bBS");
         Method compactMode = getMethod(dialog.getClass(), "bN", new Class[] { Boolean.TYPE });
         Boolean compact = (Boolean) compactMode.invoke(dialog, new Object[] { Boolean.FALSE });
         Method openCard = smartCardDialog.getClass().getMethod(
                 "a", new Class[] { SelectionDialogCard.class, Boolean.TYPE });
         openCard.invoke(smartCardDialog, new Object[] { card, compact });
-        AutoUndoSelectionSession.arm(card);
-        enlargeSmartCard(smartCardDialog);
+        AutoUndoSelectionSession.arm(dialog, card);
+        final Rectangle targetBounds = enlargeSmartCard(smartCardDialog);
+        if (targetBounds != null) {
+            sdk.invokeLater(new Runnable() {
+                public void run() {
+                    Rectangle actual = ensureLiveFrameBounds(
+                            smartCardDialog, targetBounds);
+                    if (!targetBounds.equals(actual)) {
+                        AiAssistantLog.write(
+                                "smart card deferred resize incomplete target="
+                                + targetBounds + " actual=" + actual);
+                    }
+                }
+            });
+        }
     }
 
-    private static void enlargeSmartCard(Object smartCardDialog) {
+    private static Rectangle enlargeSmartCard(Object smartCardDialog) {
         try {
             Rectangle bounds = getDialogBounds(smartCardDialog);
             Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
@@ -103,18 +116,14 @@ final class AiAssistantController {
             setBounds.invoke(smartCardDialog, new Object[] { larger });
 
             Rectangle actual = resizeLiveFrame(smartCardDialog, larger);
-            try {
-                smartCardDialog.getClass().getMethod("validate", new Class[0])
-                        .invoke(smartCardDialog, new Object[0]);
-            } catch (Throwable ignored) {
-                // Dialog resizing should not be able to break the AI card.
-            }
             AiAssistantLog.write(
                     "smart card resize original=" + bounds
                     + " target=" + larger
                     + " actual=" + actual);
+            return larger;
         } catch (Throwable t) {
             AiAssistantLog.write("smart card resize skipped: " + t.toString());
+            return null;
         }
     }
 
@@ -129,18 +138,23 @@ final class AiAssistantController {
     }
 
     private static Rectangle resizeLiveFrame(Object smartCardDialog, Rectangle bounds) {
+        return ensureLiveFrameBounds(smartCardDialog, bounds);
+    }
+
+    private static Rectangle ensureLiveFrameBounds(
+            Object smartCardDialog, Rectangle bounds) {
         try {
             Method getFrame = getMethod(
                     smartCardDialog.getClass(), "getFrame", new Class[0]);
             Object frame = getFrame.invoke(smartCardDialog, new Object[0]);
             if (frame instanceof Component) {
                 Component component = (Component) frame;
-                component.setBounds(bounds);
-                component.invalidate();
-                if (component instanceof Container) {
-                    ((Container) component).validate();
+                if (!bounds.equals(component.getBounds())) {
+                    component.setBounds(bounds);
+                    if (component instanceof Container) {
+                        ((Container) component).validate();
+                    }
                 }
-                component.repaint();
                 return component.getBounds();
             }
         } catch (Throwable t) {

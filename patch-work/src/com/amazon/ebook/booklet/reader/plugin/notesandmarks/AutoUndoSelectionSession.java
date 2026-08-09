@@ -8,13 +8,15 @@ import java.lang.reflect.Method;
 import java.util.List;
 
 public final class AutoUndoSelectionSession {
-    private static SelectionDialogCard activeCard;
+    private static Session activeSession;
 
     private AutoUndoSelectionSession() { }
 
-    public static synchronized void arm(SelectionDialogCard card) {
-        activeCard = card;
-        if (card != null) {
+    public static synchronized void arm(
+            SelectionDialog dialog, SelectionDialogCard card) {
+        activeSession = dialog == null || card == null
+                ? null : new Session(dialog, card);
+        if (activeSession != null) {
             AiAssistantLog.write("auto undo armed card=" + card.anN());
         }
     }
@@ -24,13 +26,16 @@ public final class AutoUndoSelectionSession {
             return;
         }
 
-        SelectionDialogCard card = takeVisibleCard();
-        if (card == null) {
+        Session session = takeSession();
+        if (session == null
+                || session.dialog != dialog
+                || !isCurrentSmartCard(dialog, session.card)) {
             dialog.bQ(clearSelection);
             return;
         }
 
-        AiAssistantLog.write("auto undo matched outside book tap card=" + card.anN());
+        AiAssistantLog.write(
+                "auto undo matched outside book tap card=" + session.card.anN());
         ReaderAction undo = findUndoAction(dialog);
         if (undo != null) {
             try {
@@ -47,13 +52,26 @@ public final class AutoUndoSelectionSession {
         dialog.bQ(true);
     }
 
-    private static synchronized SelectionDialogCard takeVisibleCard() {
-        SelectionDialogCard card = activeCard;
-        activeCard = null;
-        if (card != null && card.isShowing()) {
-            return card;
+    private static synchronized Session takeSession() {
+        Session session = activeSession;
+        activeSession = null;
+        return session;
+    }
+
+    private static boolean isCurrentSmartCard(
+            SelectionDialog dialog, SelectionDialogCard expectedCard) {
+        try {
+            if (!dialog.VN()) {
+                return false;
+            }
+            Object smartCardDialog = invokeNoArgs(dialog, "VP");
+            Object currentCard = invokeNoArgs(smartCardDialog, "YO");
+            return currentCard == expectedCard;
+        } catch (Throwable t) {
+            AiAssistantLog.write(
+                    "auto undo current card lookup failed: " + t.toString());
+            return false;
         }
-        return null;
     }
 
     private static ReaderAction findUndoAction(SelectionDialog dialog) {
@@ -78,5 +96,32 @@ public final class AutoUndoSelectionSession {
             AiAssistantLog.write("auto undo action lookup failed: " + t.toString());
         }
         return null;
+    }
+
+    private static Object invokeNoArgs(Object target, String name) throws Exception {
+        if (target == null) {
+            throw new NullPointerException(name + " target");
+        }
+        Class current = target.getClass();
+        while (current != null) {
+            try {
+                Method method = current.getDeclaredMethod(name, new Class[0]);
+                method.setAccessible(true);
+                return method.invoke(target, new Object[0]);
+            } catch (NoSuchMethodException e) {
+                current = current.getSuperclass();
+            }
+        }
+        throw new NoSuchMethodException(name);
+    }
+
+    private static final class Session {
+        final SelectionDialog dialog;
+        final SelectionDialogCard card;
+
+        Session(SelectionDialog dialog, SelectionDialogCard card) {
+            this.dialog = dialog;
+            this.card = card;
+        }
     }
 }

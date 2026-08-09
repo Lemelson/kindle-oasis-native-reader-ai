@@ -15,12 +15,12 @@ If the Kindle is connected over USB, current artifacts live under:
 On Kindle, install through:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v26 large card + dismiss
+KUAL -> Native Reader Patch -> Install AI Note v27 reliable dismiss
 ```
 
 The installer:
 
-1. verifies the exact SHA-256 of both v26 jars and both rollback jars
+1. verifies the exact SHA-256 of both v27 jars and both rollback jars
 2. backs up the current Reader plugin and SDK jars under
    `/mnt/us/native-reader-research/backups`
 3. remounts root read-write
@@ -29,7 +29,7 @@ The installer:
 5. verifies both installed hashes and restores the backups if activation fails
 6. makes a best-effort read-only remount and reboots
 
-The v26 installer does not rewrite `translator.jar`, AI configuration, or VPN
+The v27 installer does not rewrite `translator.jar`, AI configuration, or VPN
 scripts.
 
 ## Current Config
@@ -146,25 +146,28 @@ It removes:
 
 ## Current AI States
 
-The connected Kindle currently has the confirmed v25 build installed:
+The connected Kindle currently has v27 installed. Its configuration has
+`vpn_enabled=true`, so this previous release starts the local Xray tunnel before
+Gemini or OpenRouter requests and stops it when the AI card closes.
+
+The installed build is:
 
 ```text
-AI Note v25 instant session + latest-request-wins
+AI Note v27 reliable dismiss
 ```
 
-The current local candidate is:
-
-```text
-AI Note v26 large card + outside-tap Undo
-```
-
-It keeps all v25 behavior and adds:
+It keeps the v26 large-card behavior and:
 
 - one embedded AI smart-card with top prompt buttons and lower output area
 - approximately 2x stock height for AI only, with the native Translate size
   unchanged
-- native Undo when the book is tapped outside an open AI or Translate card
+- matches an armed AI or Translate session against Kindle's real
+  `SelectionDialog.VN()` and current `SmartCardDialog.YO()` state
+- invokes native Undo when the book is tapped outside the matching card
 - unchanged outside-tap behavior for ordinary selections
+- removes redundant full-frame repaint/invalidate work
+- performs one no-op deferred bounds check and resizes only if Kindle restored
+  the stock height after posting
 - one-tap automatic Explain through Gemini 3.6 Flash
 - Gemini and OpenRouter final-answer streaming
 - short tap for the Gemini-first chain
@@ -172,7 +175,7 @@ It keeps all v25 behavior and adds:
 - cancellation of the previous stream/retries when a new mode is selected
 - one Xray session kept alive until the AI card closes
 
-The v26 jars require physical on-device validation after installation; host JVM
+The v27 jars require physical on-device validation after installation; host JVM
 tests cannot prove E-Ink layout or the Kindle touch event path.
 
 ## If Reader UI Freezes
@@ -194,13 +197,13 @@ reset can remove documents and homebrew launchers.
 The AI SDK jar and Reader plugin are built with:
 
 ```sh
-rm -rf patch-work/classes-ai-v26 patch-work/patched-ai-v26
-mkdir -p patch-work/classes-ai-v26
+rm -rf patch-work/classes-ai-v27 patch-work/patched-ai-v27
+mkdir -p patch-work/classes-ai-v27
 CP=$(printf '%s:' from-kindle/native-reader-research/jars/*.jar)
-javac --release 8 -cp "$CP" -d patch-work/classes-ai-v26 \
+javac --release 8 -cp "$CP" -d patch-work/classes-ai-v27 \
   $(find patch-work/stubs patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks -name '*.java' -print)
-javac --release 8 -cp "$CP:patch-work/classes-ai-v26" \
-  -d patch-work/classes-ai-v26 \
+javac --release 8 -cp "$CP:patch-work/classes-ai-v27" \
+  -d patch-work/classes-ai-v27 \
   patch-work/src/com/amazon/ebook/booklet/reader/plugin/share/ShareSelectedTextAction.java
 python3 patch-work/scripts/build_ai_note_patch.py
 ```

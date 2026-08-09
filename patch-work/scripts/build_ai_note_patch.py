@@ -9,10 +9,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 ORIGINAL_JAR = ROOT / "from-kindle/native-reader-research/jars/ReaderSDK-impl.jar"
 ORIGINAL_READER_JAR = ROOT / "from-kindle/native-reader-research/jars/Reader-plugin.jar"
-CLASSES_DIR = ROOT / "patch-work/classes-ai-v26"
-OUT_DIR = ROOT / "patch-work/patched-ai-v26"
-OUT_JAR = OUT_DIR / "ReaderSDK-impl.ai-v26.jar"
-OUT_READER_JAR = OUT_DIR / "Reader-plugin.v26.jar"
+CLASSES_DIR = ROOT / "patch-work/classes-ai-v27"
+OUT_DIR = ROOT / "patch-work/patched-ai-v27"
+OUT_JAR = OUT_DIR / "ReaderSDK-impl.ai-v27.jar"
+OUT_READER_JAR = OUT_DIR / "Reader-plugin.v27.jar"
 GENERATED_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 
 ADD_NOTE_CLASS = (

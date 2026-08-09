@@ -16,8 +16,9 @@ import java.util.List;
 public final class AutoUndoSelectionSessionTest {
     public static void main(String[] args) {
         testUnarmedBookTapKeepsNativeCloseBehavior();
-        testArmedVisibleCardPerformsNativeUndo();
-        testHiddenCardDoesNotAffectLaterSelection();
+        testArmedKindleCardPerformsNativeUndoWhenSwingIsShowingIsFalse();
+        testClosedSmartCardDoesNotAffectLaterSelection();
+        testDifferentCurrentSmartCardDoesNotTriggerUndo();
         testMissingUndoStillClearsSelection();
         testArmedSessionIsConsumedBeforeUndoReentry();
         System.out.println("AutoUndoSelectionSessionTest OK");
@@ -32,16 +33,18 @@ public final class AutoUndoSelectionSessionTest {
         assertFalse(dialog.lastClearSelection, "native close flag");
     }
 
-    private static void testArmedVisibleCardPerformsNativeUndo() {
+    private static void testArmedKindleCardPerformsNativeUndoWhenSwingIsShowingIsFalse() {
         FakeSelectionDialog dialog = new FakeSelectionDialog();
         DeleteHighlightAction undo = new DeleteHighlightAction(dialog);
         dialog.actions = Collections.singletonList(undo);
-        FakeCard card = new FakeCard(true);
-        assertTrue(card.isShowing(), "test card visibility");
+        FakeCard card = new FakeCard(false);
+        dialog.showSmartCard(card);
+        assertFalse(card.isShowing(), "Kindle Swing card visibility");
+        assertTrue(dialog.VN(), "Kindle smart-card state");
         assertTrue(undo.isEnabled(), "test Undo enabled");
         assertTrue(undo.getClass().getName().endsWith("$DeleteHighlightAction"),
                 "test Undo class name");
-        AutoUndoSelectionSession.arm(card);
+        AutoUndoSelectionSession.arm(dialog, card);
 
         AutoUndoSelectionSession.handleBookTap(dialog, false);
 
@@ -50,22 +53,40 @@ public final class AutoUndoSelectionSessionTest {
         assertTrue(dialog.lastClearSelection, "Undo clear flag");
     }
 
-    private static void testHiddenCardDoesNotAffectLaterSelection() {
+    private static void testClosedSmartCardDoesNotAffectLaterSelection() {
         FakeSelectionDialog dialog = new FakeSelectionDialog();
         DeleteHighlightAction undo = new DeleteHighlightAction(dialog);
         dialog.actions = Collections.singletonList(undo);
-        AutoUndoSelectionSession.arm(new FakeCard(false));
+        FakeCard card = new FakeCard(false);
+        AutoUndoSelectionSession.arm(dialog, card);
 
         AutoUndoSelectionSession.handleBookTap(dialog, false);
 
-        assertEquals(0, undo.performCount, "hidden-card Undo count");
-        assertEquals(1, dialog.closeCount, "hidden-card native close count");
-        assertFalse(dialog.lastClearSelection, "hidden-card native close flag");
+        assertEquals(0, undo.performCount, "closed-card Undo count");
+        assertEquals(1, dialog.closeCount, "closed-card native close count");
+        assertFalse(dialog.lastClearSelection, "closed-card native close flag");
+    }
+
+    private static void testDifferentCurrentSmartCardDoesNotTriggerUndo() {
+        FakeSelectionDialog dialog = new FakeSelectionDialog();
+        DeleteHighlightAction undo = new DeleteHighlightAction(dialog);
+        dialog.actions = Collections.singletonList(undo);
+        FakeCard armedCard = new FakeCard(false);
+        dialog.showSmartCard(new FakeCard(false));
+        AutoUndoSelectionSession.arm(dialog, armedCard);
+
+        AutoUndoSelectionSession.handleBookTap(dialog, false);
+
+        assertEquals(0, undo.performCount, "replacement-card Undo count");
+        assertEquals(1, dialog.closeCount, "replacement-card native close count");
+        assertFalse(dialog.lastClearSelection, "replacement-card native close flag");
     }
 
     private static void testMissingUndoStillClearsSelection() {
         FakeSelectionDialog dialog = new FakeSelectionDialog();
-        AutoUndoSelectionSession.arm(new FakeCard(true));
+        FakeCard card = new FakeCard(false);
+        dialog.showSmartCard(card);
+        AutoUndoSelectionSession.arm(dialog, card);
 
         AutoUndoSelectionSession.handleBookTap(dialog, false);
 
@@ -77,7 +98,9 @@ public final class AutoUndoSelectionSessionTest {
         FakeSelectionDialog dialog = new FakeSelectionDialog();
         DeleteHighlightAction undo = new DeleteHighlightAction(dialog);
         dialog.actions = Collections.singletonList(undo);
-        AutoUndoSelectionSession.arm(new FakeCard(true));
+        FakeCard card = new FakeCard(false);
+        dialog.showSmartCard(card);
+        AutoUndoSelectionSession.arm(dialog, card);
 
         AutoUndoSelectionSession.handleBookTap(dialog, false);
         AutoUndoSelectionSession.handleBookTap(dialog, false);
@@ -91,6 +114,13 @@ public final class AutoUndoSelectionSessionTest {
         int closeCount;
         boolean lastClearSelection;
         List actions = Collections.EMPTY_LIST;
+        boolean smartCardShowing;
+        final FakeSmartCardDialog smartCardDialog = new FakeSmartCardDialog();
+
+        void showSmartCard(SelectionDialogCard card) {
+            smartCardShowing = true;
+            smartCardDialog.currentCard = card;
+        }
 
         public void bQ(boolean clearSelection) {
             closeCount++;
@@ -103,15 +133,23 @@ public final class AutoUndoSelectionSessionTest {
 
         public void VD() { }
         public void bO(boolean visible) { }
-        public boolean VN() { return false; }
+        public boolean VN() { return smartCardShowing; }
         public boolean VE() { return false; }
         public SmartLookupMetricsCollector VO() { return null; }
         public SelectionMetricsPublisher VQ() { return null; }
-        public KDialog VP() { return null; }
+        public KDialog VP() { return smartCardDialog; }
         public boolean a(Element element, boolean value) { return false; }
         public boolean a(Element element, boolean first, boolean second) { return false; }
         public boolean isShowing() { return true; }
         public void a(Book book, boolean value) { }
+    }
+
+    private static final class FakeSmartCardDialog extends KDialog {
+        SelectionDialogCard currentCard;
+
+        public SelectionDialogCard YO() {
+            return currentCard;
+        }
     }
 
     private static final class FakeCard extends SelectionDialogCard {

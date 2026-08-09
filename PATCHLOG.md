@@ -811,3 +811,64 @@ a canonical build. Patched Amazon JARs are no longer distributed through GitHub
 Releases. v26 was installed on 2026-07-27. The approximately 2x AI geometry
 works, but tapping the book does not invoke Undo and leaves the highlight
 selected.
+
+## AI Note v27 reliable outside dismiss
+
+Built from the device-tested v26 source. Root cause and changes:
+
+- device logs consistently contained `auto undo armed` but never
+  `auto undo matched outside book tap`
+- the v26 matcher incorrectly trusted Swing `SelectionDialogCard.isShowing()`;
+  Kindle's visible SmartCard can return false through that generic Swing API
+- v27 stores both the selection dialog and card, then matches the book tap
+  against Kindle's native `SelectionDialog.VN()` state and the exact current
+  card returned by `SmartCardDialog.YO()`
+- stale, closed, replaced, unarmed, or unrelated cards retain Amazon's original
+  `bQ(false)` behavior
+- the native enabled `DeleteHighlightAction` remains the preferred exact Undo,
+  with `bQ(true)` as fallback
+- removes explicit frame `invalidate()` and `repaint()` plus a redundant dialog
+  validation
+- performs one deferred bounds verification; an already-correct frame is a
+  no-op, while a late stock-size reset is corrected once
+
+Network behavior:
+
+- v27 is the last VPN-based release
+- with the installed `vpn_enabled=true` configuration, v27 starts the local
+  Xray tunnel before Gemini or OpenRouter requests and stops it when the AI card
+  closes
+- the repository contains only the generic tunnel launch/stop scripts; the
+  private Xray endpoint configuration and all API keys remain device-local and
+  are not included in Git
+
+Performance evidence from the device log:
+
+- successful v26 action-to-card times were approximately 2.0-2.2 seconds
+- the final recorded v25 opening took approximately 3.0 seconds
+- v26 resize code itself took approximately 10-27 milliseconds
+
+The logs therefore do not show a Java-side slowdown. The larger E-Ink redraw
+can still feel slower, so v27 removes redundant redraw/layout requests.
+
+Regression coverage:
+
+- visible Kindle SmartCard with Swing `isShowing() == false` invokes Undo
+- closed, replaced, and unarmed cards preserve original behavior
+- missing native Undo clears through `bQ(true)`
+- the armed session is one-shot
+- late stock bounds are corrected exactly once
+- already-expanded bounds do not trigger another layout
+- no explicit full-frame repaint is requested
+
+Built artifacts:
+
+- `patch-work/patched-ai-v27/ReaderSDK-impl.ai-v27.jar`
+- SHA-256: `780cc1e4909e17f1931597c53baa9f368e7628d1ae43d675c83fc8787c781a2d`
+- `patch-work/patched-ai-v27/Reader-plugin.v27.jar`
+- SHA-256: `e43a30553e5fc1f28b83493da222772de14b4e80a91fc8120bee9bfd39c80f4e`
+
+Device deployment: both v27 artifacts and the hash-pinned KUAL installer were
+copied to the Kindle USB partition and verified byte-for-byte on 2026-07-27.
+The installer completed successfully on 2026-07-27 and was re-run successfully
+on 2026-08-03; the system currently runs v27.
