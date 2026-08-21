@@ -70,11 +70,11 @@ Current behavior:
 select text -> AI -> embedded card -> Explain starts automatically
 ```
 
-Opening the card starts `Explain` with Gemini 3.6 Flash, making the normal path
+Opening the card starts `Explain` with Gemini 3.7 Flash, making the normal path
 one tap. Short-tapping another mode immediately cancels the active HTTP stream
 and pending retries, then uses the normal Gemini-first chain. Long-pressing a
-mode for about 800 ms cancels the active request and starts with `pro_model`
-instead. The active mode button uses bold text and a gray background.
+mode for about 800 ms cancels the active request and starts with DeepSeek V4
+Flash instead. The active mode button uses bold text and a gray background.
 
 The card is not a separate fullscreen application. It opens through the same
 native smart-card path used by other Kindle reader cards.
@@ -132,22 +132,21 @@ Current important values:
 
 ```text
 model=deepseek/deepseek-v4-flash-0731
-pro_model=deepseek/deepseek-v4-flash-0731
-pro_fallback_model=xiaomi/mimo-v2.5-pro
 base_url=https://openrouter.ai/api/v1/chat/completions
 temperature=0.2
 max_tokens=6750
 timeout_ms=45000
 reasoning_effort=high
 reasoning_exclude=false
-gemini_models=gemini-3.6-flash
+gemini_models=gemini-3.7-flash
 gemini_thinking_level=high
 ```
 
 The shared `max_tokens` value is sent as OpenRouter `max_tokens` and Gemini
-`maxOutputTokens`. Gemini thinking is internal and not displayed. OpenRouter
-reasoning remains visible when a fallback is used and
-`reasoning_exclude=false`.
+`maxOutputTokens`. v29 requests Gemini thought summaries with
+`includeThoughts=true`; those summaries and OpenRouter reasoning are displayed
+only during the thinking phase. They are cleared when final-answer streaming
+starts. OpenRouter reasoning is returned when `reasoning_exclude=false`.
 
 For a quieter production build, set:
 
@@ -163,7 +162,7 @@ The current OpenRouter request uses:
 
 ```json
 {
-  "model": "deepseek/deepseek-v4-flash",
+  "model": "deepseek/deepseek-v4-flash-0731",
   "provider": {
     "allow_fallbacks": false
   },
@@ -182,24 +181,23 @@ The current OpenRouter request uses:
 ```
 
 `allow_fallbacks=false` is important because it prevents OpenRouter from silently
-routing to another model. Any Flash/Pro fallback is handled explicitly by this
-patch and shown in the UI.
+routing to another model. The Gemini/DeepSeek order is handled explicitly by
+this patch and shown in the UI.
 
 ## Retry And Fallback
 
 Normal tap order:
 
 ```text
-Gemini 3.6 Flash: up to 4 attempts
-DeepSeek V4 Pro: up to 5 attempts
+Gemini 3.7 Flash: up to 4 attempts
+DeepSeek V4 Flash 0731: up to 4 attempts
 ```
 
 Long-press order:
 
 ```text
-DeepSeek V4 Pro: up to 5 attempts
-Gemini 3.6 Flash: up to 4 attempts
-DeepSeek V4 Flash: up to 4 attempts
+DeepSeek V4 Flash 0731: up to 5 attempts
+Gemini 3.7 Flash: up to 4 attempts
 ```
 
 Retry/fallback status remains visible in the card.
@@ -224,16 +222,17 @@ OpenRouter: reasoning chunks, then content chunks
 
 UI behavior:
 
-1. Show short Russian statuses such as `Gemini думает…`,
-   `Gemini: повтор 2/4…`, or `Переключаюсь на DeepSeek Pro…`.
-2. Stream final-answer chunks directly, without a `Final answer:` prefix.
-3. Throttle e-ink text updates to at most once every 1.5 seconds.
-4. Cache the completed final answer for the selected mode and selection.
-5. Keep the existing 8pt output font.
+1. Show request-sent and provider-accepted states for Gemini and DeepSeek.
+2. Stream Gemini thought summaries or OpenRouter reasoning during thinking.
+3. Clear the thinking view when the first final-answer token arrives.
+4. Stream final-answer chunks directly, without a `Final answer:` prefix.
+5. Throttle e-ink text updates to at most once every 600 ms.
+6. Cache the completed final answer for the selected mode and selection.
+7. Keep the existing 8pt output font.
 
 ## Direct Networking
 
-v28 opens ordinary direct HTTPS connections:
+v29 opens ordinary direct HTTPS connections:
 
 ```text
 AI pressed -> capture context
@@ -253,12 +252,16 @@ long thinking traces do not grow the UI without bound.
 The prompt asks for:
 
 - Russian answers
-- direct answer first
+- the most important relevant information first
+- secondary context, nuance, examples, or interesting facts in descending order
+  of usefulness
+- model-chosen structure and detail instead of fixed response templates
+- no generic preamble, question repetition, or padding after the explanation is
+  complete
 - focus on the selected fragment
 - no future plot spoilers beyond before context and selected fragment
-- concise readable formatting
+- plain-text readable formatting
 - no dependency on HTML
-- safe Markdown subset if the model returns Markdown
 
 Hyphen bullets are allowed.
 
@@ -279,19 +282,23 @@ This is different from translation: it explains how the language works.
 `Wiki`
 
 Use when the reader highlights a person, term, place, event, work, or concept
-and wants a short encyclopedia-style answer. It leads with real-world knowledge
-and only falls back to before-context when the item is specific to the book.
-This replaces the earlier `Recall` mode and absorbs its book-internal use case.
+and wants an engaging encyclopedia-style mini-article or strong search result.
+It leads with a clear identification and real-world knowledge, may add memorable
+facts, and connects the item to the book when that genuinely helps without
+forcing the connection or revealing unread information. This replaces the
+earlier `Recall` mode and absorbs its book-internal use case.
 
 `Why`
 
 Use when the words are understood but the function of the fragment is unclear.
-This mode explains why the fragment matters here.
+This mode gives surrounding context more weight and explains why the reader may
+have stopped at this exact point.
 
 `Deep`
 
 Use when the passage feels dense, important, philosophical, symbolic, or
-difficult. This mode allows a longer and deeper answer.
+difficult. This mode chooses its own depth and structure without a word limit or
+mandatory sections.
 
 ## Known Tradeoffs
 

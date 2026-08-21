@@ -10,13 +10,14 @@ public final class AiProviderChainClientStreamTest {
                 + "{\"text\":\"Первый\"}]}}]}\n\n"
                 + "data: {\"candidates\":[{\"content\":{\"parts\":["
                 + "{\"text\":\" ответ\"}]}}]}\n\n";
+        final StringBuffer thinking = new StringBuffer();
         final StringBuffer streamed = new StringBuffer();
         String answer = AiProviderChainClient.readGeminiEventStream(
                 new ByteArrayInputStream(sse.getBytes("UTF-8")),
                 new OpenRouterClient.Callback() {
                     public void onStatus(String message) { }
                     public void onThinking(String text) {
-                        throw new AssertionError("Gemini thoughts must stay hidden.");
+                        thinking.append(text);
                     }
                     public void onContent(String text) {
                         streamed.append(text);
@@ -28,6 +29,7 @@ public final class AiProviderChainClientStreamTest {
                 });
         assertEquals("Первый ответ", answer, "combined answer");
         assertEquals(answer, streamed.toString(), "streamed chunks");
+        assertEquals("hidden reasoning", thinking.toString(), "Gemini thinking stream");
         if (answer.indexOf("hidden reasoning") >= 0) {
             throw new AssertionError("Thought text leaked into final answer.");
         }

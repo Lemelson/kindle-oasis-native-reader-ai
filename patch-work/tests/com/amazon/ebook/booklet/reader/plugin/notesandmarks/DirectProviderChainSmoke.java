@@ -10,23 +10,23 @@ public final class DirectProviderChainSmoke {
 
     public static void main(String[] args) throws Exception {
         if (args.length != 2
-                || (!"normal".equals(args[1]) && !"pro".equals(args[1]))) {
+                || (!"normal".equals(args[1]) && !"deepseek".equals(args[1]))) {
             throw new IllegalArgumentException(
-                    "usage: DirectProviderChainSmoke <properties> <normal|pro>");
+                    "usage: DirectProviderChainSmoke <properties> <normal|deepseek>");
         }
 
         OpenRouterConfig config = loadConfig(args[0]);
-        final boolean proFirst = "pro".equals(args[1]);
+        final boolean deepSeekFirst = "deepseek".equals(args[1]);
         final CountDownLatch done = new CountDownLatch(1);
         final boolean[] success = new boolean[] { false };
-        final String[] provider = new String[] { proFirst ? "openrouter" : "gemini" };
+        final String[] provider = new String[] { deepSeekFirst ? "openrouter" : "gemini" };
         final int[] contentChars = new int[] { 0 };
 
         AiProviderChainClient.send(
                 null,
                 config,
                 "Connectivity smoke test. Reply exactly OK.",
-                proFirst,
+                deepSeekFirst,
                 new OpenRouterClient.Callback() {
                     public void onStatus(String message) {
                         if (message != null && message.indexOf("Переключаюсь на Gemini") >= 0) {
@@ -80,9 +80,6 @@ public final class DirectProviderChainSmoke {
         OpenRouterConfig config = new OpenRouterConfig();
         config.apiKey = get(properties, "api_key", config.apiKey);
         config.model = get(properties, "model", config.model);
-        config.proModel = get(properties, "pro_model", config.proModel);
-        config.proFallbackModel = get(
-                properties, "pro_fallback_model", config.proFallbackModel);
         config.baseUrl = get(properties, "base_url", config.baseUrl);
         config.referer = get(properties, "referer", config.referer);
         config.title = get(properties, "title", config.title);

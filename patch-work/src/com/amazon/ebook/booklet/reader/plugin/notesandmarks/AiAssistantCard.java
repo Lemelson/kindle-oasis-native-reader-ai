@@ -29,7 +29,7 @@ final class AiAssistantCard extends SelectionDialogCard {
     private static final int BUTTON_HEIGHT = 48;
     private static final int THINKING_DISPLAY_LIMIT = 12000;
     private static final int LONG_PRESS_MS = 800;
-    private static final long STREAM_UPDATE_INTERVAL_MS = 1500L;
+    private static final long STREAM_UPDATE_INTERVAL_MS = 600L;
 
     private final ReaderSDK sdk;
     private final AiAssistantController.SelectionData selection;
@@ -178,11 +178,11 @@ final class AiAssistantCard extends SelectionDialogCard {
         button.setMinimumSize(new Dimension(10, BUTTON_HEIGHT));
     }
 
-    private void selectPreset(String name, boolean useProModel) {
+    private void selectPreset(String name, boolean deepSeekFirst) {
         if (sessionClosed) {
             return;
         }
-        String key = modeKey(name, useProModel);
+        String key = modeKey(name, deepSeekFirst);
         if (activeRequest != null && key.equals(activeRequestKey)) {
             return;
         }
@@ -205,16 +205,15 @@ final class AiAssistantCard extends SelectionDialogCard {
             }
         }
 
-        runPrompt(name, AiAssistantController.presetPrompt(name), useProModel);
+        runPrompt(name, AiAssistantController.presetPrompt(name), deepSeekFirst);
     }
 
-    private void runPrompt(final String name, String instruction, boolean useProModel) {
-        final String key = modeKey(name, useProModel);
+    private void runPrompt(final String name, String instruction, boolean deepSeekFirst) {
+        final String key = modeKey(name, deepSeekFirst);
         final int requestId = nextRequestId(key);
         try {
             AiAssistantLog.write("prompt start name=" + name
-                    + " modelTier=" + (useProModel ? "pro" : "flash"));
-            config.proRequest = useProModel;
+                    + " providerFirst=" + (deepSeekFirst ? "deepseek" : "gemini"));
             if (config.diagnosticsEnabled) {
                 updateStatus(key, requestId, "Проверяю подключение…");
                 AiConnectivityDiagnostics.run(config, new AiConnectivityDiagnostics.Callback() {
@@ -239,17 +238,24 @@ final class AiAssistantCard extends SelectionDialogCard {
             }
 
             updateStatus(key, requestId,
-                    useProModel ? "DeepSeek Pro думает…" : "Gemini думает…");
+                    deepSeekFirst
+                            ? "Отправляю запрос в DeepSeek Flash…"
+                            : "Отправляю запрос в Gemini…");
             String userPrompt = AiAssistantController.buildUserPrompt(name, instruction, selection);
             final StringBuffer thinking = new StringBuffer();
             final StringBuffer content = new StringBuffer();
+            final String[] currentProviderLabel = new String[] {
+                    deepSeekFirst ? "DeepSeek Flash" : "Gemini"
+            };
             final long[] lastThinkingUpdateMs = new long[] { 0L };
             final long[] lastContentUpdateMs = new long[] { 0L };
             activeRequest = AiProviderChainClient.send(
-                    sdk, config, userPrompt, useProModel, new OpenRouterClient.Callback() {
+                    sdk, config, userPrompt, deepSeekFirst, new OpenRouterClient.Callback() {
                 public void onStatus(final String message) {
                     sdk.invokeLater(new Runnable() {
                         public void run() {
+                            currentProviderLabel[0] = providerLabelFromStatus(
+                                    message, currentProviderLabel[0]);
                             if (content.length() > 0 && message != null
                                     && (message.indexOf("повтор") >= 0
                                     || message.indexOf("Переключаюсь") >= 0)) {
@@ -271,7 +277,7 @@ final class AiAssistantCard extends SelectionDialogCard {
                             }
                             thinking.append(text);
                             if (shouldUpdateStream(lastThinkingUpdateMs)) {
-                                updateStatus(key, requestId, "DeepSeek думает…\n"
+                                updateStatus(key, requestId, currentProviderLabel[0] + " думает…\n"
                                         + displayTail(thinking.toString()));
                             }
                         }
@@ -283,6 +289,11 @@ final class AiAssistantCard extends SelectionDialogCard {
                         public void run() {
                             if (!isLatestRequest(key, requestId)) {
                                 return;
+                            }
+                            if (content.length() == 0) {
+                                thinking.setLength(0);
+                                lastThinkingUpdateMs[0] = 0L;
+                                lastContentUpdateMs[0] = 0L;
                             }
                             content.append(text);
                             if (shouldUpdateStream(lastContentUpdateMs)) {
@@ -403,8 +414,21 @@ final class AiAssistantCard extends SelectionDialogCard {
         }
     }
 
-    private static String modeKey(String name, boolean useProModel) {
-        return (useProModel ? "pro" : "flash") + "|" + String.valueOf(name);
+    private static String modeKey(String name, boolean deepSeekFirst) {
+        return (deepSeekFirst ? "deepseek" : "gemini") + "|" + String.valueOf(name);
+    }
+
+    private static String providerLabelFromStatus(String status, String fallback) {
+        if (status == null) {
+            return fallback;
+        }
+        if (status.indexOf("Gemini") >= 0) {
+            return "Gemini";
+        }
+        if (status.indexOf("DeepSeek") >= 0) {
+            return "DeepSeek Flash";
+        }
+        return fallback;
     }
 
     private static String displayTail(String text) {

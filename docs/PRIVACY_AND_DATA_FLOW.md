@@ -35,7 +35,7 @@ local prompt construction on Kindle
 streamed response shown in the native reader card
 ```
 
-v28 connects directly to the selected providers. The previous v27 release could
+v28 and v29 connect directly to the selected providers. The previous v27 release could
 route requests through a local Xray process; that changed the network route but
 did not make request content private from the selected AI provider.
 

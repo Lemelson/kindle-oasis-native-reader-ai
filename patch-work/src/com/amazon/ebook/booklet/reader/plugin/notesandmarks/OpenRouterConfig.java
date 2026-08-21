@@ -8,13 +8,7 @@ final class OpenRouterConfig {
     static final String CONFIG_PATH = "/mnt/us/native-reader-research/ai-assistant.properties";
 
     String apiKey = "";
-    String model = "deepseek/deepseek-v4-flash";
-    String proModel = "deepseek/deepseek-v4-pro";
-    String proFallbackModel = "xiaomi/mimo-v2.5-pro";
-    String fallbackModel = "";
-    boolean proRequest = false;
-    boolean fallbackRequest = false;
-    int retryPhase = 0;
+    String model = "deepseek/deepseek-v4-flash-0731";
     String baseUrl = "https://openrouter.ai/api/v1/chat/completions";
     String referer = "https://kindle.local/native-reader-ai";
     String title = "Kindle Native Reader AI";
@@ -27,7 +21,7 @@ final class OpenRouterConfig {
     String geminiApiKey = "";
     String geminiApiKeys = "";
     String geminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta";
-    String geminiModels = "gemini-3.6-flash";
+    String geminiModels = "gemini-3.7-flash";
     String geminiThinkingLevel = "high";
     int geminiDailyRequestLimit = 20;
     long geminiQuotaWindowMs = 86400000L;
@@ -55,8 +49,6 @@ final class OpenRouterConfig {
             properties.load(input);
             config.apiKey = get(properties, "api_key", config.apiKey);
             config.model = get(properties, "model", config.model);
-            config.proModel = get(properties, "pro_model", config.proModel);
-            config.proFallbackModel = get(properties, "pro_fallback_model", config.proFallbackModel);
             config.baseUrl = get(properties, "base_url", config.baseUrl);
             config.referer = get(properties, "referer", config.referer);
             config.title = get(properties, "title", config.title);

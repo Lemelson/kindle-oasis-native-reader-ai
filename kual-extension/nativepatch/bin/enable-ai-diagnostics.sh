@@ -19,7 +19,7 @@ touch "$CONFIG"
 set_prop diagnostics_enabled true
 set_prop diagnostic_attempts 1
 set_prop gemini_base_url https://generativelanguage.googleapis.com/v1beta
-set_prop gemini_models gemini-3.6-flash
+set_prop gemini_models gemini-3.7-flash
 set_prop gemini_thinking_level high
 set_prop gemini_daily_request_limit 20
 set_prop gemini_quota_window_ms 86400000

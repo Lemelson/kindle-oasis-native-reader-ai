@@ -223,10 +223,9 @@ final class AiAssistantController {
                     + "If the text is in Russian or another language:\n"
                     + "- Explain archaic, literary, formal, figurative, or culturally loaded wording.\n"
                     + "- Explain sentence structure if it blocks understanding.\n\n"
-                    + "Do not summarize the plot or the whole argument.\n\n"
-                    + "Output:\n"
-                    + "Смысл: [natural Russian meaning]\n"
-                    + "Язык: [why the wording means this / what nuance it carries]";
+                    + "Do not summarize the plot or the whole argument.\n"
+                    + "Prioritize whatever most directly unlocks the wording. Combine translation, "
+                    + "language explanation, and nuance naturally instead of following a fixed format.";
         }
         if ("Wiki".equals(promptName)) {
             return "Reader intention:\n"
@@ -234,21 +233,25 @@ final class AiAssistantController {
                     + "meeting for the first time, and I want to know what or who it is, like a short "
                     + "encyclopedia entry.\n\n"
                     + "Task:\n"
-                    + "Identify the highlighted item and explain it using real-world knowledge.\n\n"
-                    + "- Lead with world knowledge: who the person is, what the event, place, work, or "
-                    + "concept is. Add concrete anchors (dates, field, role, nationality) when relevant.\n"
+                    + "Identify the highlighted item and explain it using real-world knowledge, like "
+                    + "an informative mini-article or a strong search result.\n\n"
+                    + "- Start with a clear identification: who or what it is. Add concrete anchors "
+                    + "(dates, field, role, nationality) when relevant.\n"
+                    + "- Make the explanation clear, engaging, and memorable rather than a dry dictionary definition.\n"
                     + "- If the item is specific to this book (a term the author coined, a person or case "
                     + "introduced earlier), identify it from BEFORE_CONTEXT and say it comes from the book.\n"
+                    + "- Use the surrounding book context to infer why the reader likely highlighted it.\n"
+                    + "- Connect it to the book context when that genuinely helps explain this passage, "
+                    + "the item's significance, or ideas the reader may need later. Do not force the connection "
+                    + "and do not reveal unread plot or chronological information.\n"
+                    + "- Add useful or interesting facts when they improve understanding. Decide yourself "
+                    + "how much background this particular item deserves.\n"
                     + "- Stay factual and neutral. If the exact referent is unclear, name the most likely "
                     + "one and say so briefly.\n"
                     + "- Explain the item itself, not the meaning of the surrounding sentence.\n\n"
                     + "For fiction, memoir, mystery, classics, or other plot-driven works:\n"
                     + "- Explain only what is safe to know at this point in the book.\n"
-                    + "- Do not reveal a real or fictional figure's later role, fate, or a later twist.\n\n"
-                    + "Output:\n"
-                    + "Что это: [one line: who or what, with a concrete anchor if relevant]\n"
-                    + "Кратко: [2-4 sentence encyclopedic summary]\n"
-                    + "Здесь: [one line: why it comes up in this passage]";
+                    + "- Do not reveal a real or fictional figure's later role, fate, or a later twist.";
         }
         if ("Why".equals(promptName)) {
             return "Reader intention:\n"
@@ -263,10 +266,9 @@ final class AiAssistantController {
                     + "- Explain whether the fragment works as a premise, conclusion, objection, example, "
                     + "definition, contrast, transition, consequence, or key distinction.\n"
                     + "- Say why the author needs this point here.\n\n"
-                    + "Keep literal summary minimal. Focus on significance.\n\n"
-                    + "Output:\n"
-                    + "Зачем это здесь: [main function]\n"
-                    + "Как это связано с контекстом: [brief connection]";
+                    + "Use the surrounding context more heavily than in other modes. Infer why the reader "
+                    + "likely stopped at this exact fragment and explain what the nearby text makes easier "
+                    + "to understand. Keep literal summary minimal and focus on significance.";
         }
         if ("Deep".equals(promptName)) {
             return "Reader intention:\n"
@@ -285,11 +287,8 @@ final class AiAssistantController {
                     + "For popular nonfiction, business, history, psychology, or biography:\n"
                     + "- Explain the concept, stakes, implication, and why it matters.\n"
                     + "- Use safe external background if helpful, but keep the selected fragment central.\n\n"
-                    + "Output:\n"
-                    + "Главная идея: [core meaning]\n"
-                    + "Глубже: [deeper layer]\n"
-                    + "Пример / зачем это важно: [simple example, implication, or importance]\n\n"
-                    + "Limit: 120-250 Russian words.";
+                    + "Go as deep as this particular fragment needs. Choose the most useful path through "
+                    + "the idea yourself rather than forcing the answer into predefined sections.";
         }
         return "Reader intention:\n"
                 + "I do not understand what the selected fragment means.\n\n"
@@ -300,10 +299,7 @@ final class AiAssistantController {
                 + "- If it is narration, explain what is happening or being described.\n"
                 + "- If it is an argument, restate the claim in simpler words.\n"
                 + "- If it is a concept, reference, metaphor, or compressed idea, briefly define it.\n"
-                + "- If the wording is difficult, briefly clarify it, but do not turn this into a full language lesson.\n\n"
-                + "Output:\n"
-                + "Start with the immediate meaning. Then add one short nuance only if useful. "
-                + "Usually 3-7 short sentences.";
+                + "- If the wording is difficult, briefly clarify it, but do not turn this into a full language lesson.";
     }
 
     static String buildUserPrompt(String modeName, String instruction, SelectionData selection) {
@@ -375,10 +371,14 @@ final class AiAssistantController {
         prompt.append("<output_rules>\n");
         prompt.append("Answer in Russian.\n");
         prompt.append("Focus on the selected fragment.\n");
-        prompt.append("Start with the direct answer.\n");
+        prompt.append("Begin immediately with the most important and relevant information for this specific selection.\n");
+        prompt.append("Then add secondary context, nuance, examples, or interesting facts in descending order of usefulness.\n");
+        prompt.append("Choose the structure and level of detail yourself.\n");
+        prompt.append("Do not use a fixed response template.\n");
+        prompt.append("Do not repeat the question or begin with a generic introduction.\n");
+        prompt.append("Stop when the explanation is complete; do not pad the answer.\n");
         prompt.append("Do not summarize the whole context unless the mode requires it.\n");
         prompt.append("For plot-driven or chronological books: no spoilers beyond BEFORE_CONTEXT and SELECTED_FRAGMENT.\n");
-        prompt.append("Keep the answer concise unless Mode is Deep.\n");
         prompt.append("Use plain text only: no Markdown bold/italic markers, no asterisks, no underscores for formatting.\n");
         prompt.append("</output_rules>\n");
         return prompt.toString();

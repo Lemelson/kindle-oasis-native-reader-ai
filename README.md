@@ -40,9 +40,10 @@ reader and not a KOReader plugin.
 - Replaces the visible `Note` action with an `AI` action.
 - Opens an embedded card with `Explain`, `Words`, `Wiki`, `Why`, and `Deep`.
 - Starts `Explain` automatically for a one-tap normal workflow.
-- Uses Gemini first for a normal press and DeepSeek Pro first for a long press.
+- Uses Gemini first for a normal press and DeepSeek V4 Flash first for a long press.
 - Cancels an older stream and its retries when a different mode is selected.
-- Keeps model and fallback status visible while answers stream.
+- Shows request submission, provider acceptance, live thinking summaries, and
+  final-answer streaming as separate states.
 - Moves Kindle's native Translation action into the visible toolbar.
 - Sets the native Translation target to Russian.
 
@@ -56,10 +57,10 @@ or bypass Kindle DRM.
 | Target hardware | Kindle Oasis, likely KOA3 / KOA3W32C |
 | Target firmware | 5.18.2 only |
 | Stable device checkpoint | AI Note v25 was installed and used on the target device |
-| Current device build | v27 was installed on 2026-07-27 and reinstalled on 2026-08-03 |
+| Current device build | v28 was installed on 2026-08-09 |
 | Previous network behavior | v27 starts and stops a local Xray tunnel when `vpn_enabled=true` |
-| Current device network setting | `vpn_enabled=false`; v27 therefore uses direct HTTPS while v28 awaits KUAL installation |
-| Current staged candidate | v28 keeps v27 behavior but removes the VPN lifecycle and proxy path for direct use from Serbia |
+| Current device network setting | `vpn_enabled=false`; v28 uses direct HTTPS |
+| Current staged candidate | v29 adds live Gemini/DeepSeek thinking states and includes the pending prompt/model policy changes |
 | Other Kindle models or firmware | Untested and unsupported |
 
 Version tags preserve the development checkpoints. GitHub Releases contain
