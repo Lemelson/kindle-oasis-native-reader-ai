@@ -110,8 +110,29 @@ The prompt treats context asymmetrically:
 - `before_context` is assumed to be already read
 - `selected_fragment` is the main truth
 - `after_context` is marked as silent disambiguation only
+- after the mode and output instructions, `final_answer_target` repeats the
+  selected fragment verbatim as the last block in the user request
+
+The user-message order is:
+
+```text
+book_metadata
+reader_progress_policy
+before_context
+selected_fragment
+after_context
+reader_request
+adaptation_rules
+mode_instructions
+output_rules
+final_answer_target
+```
 
 This is meant to reduce spoiler risk in chronological or plot-driven books.
+The final repetition keeps a long `after_context` from becoming more salient
+than the actual selection. It explicitly marks the repeated text as quoted book
+content rather than instructions and makes all earlier material supporting
+context.
 
 If context extraction fails, the prompt still includes the selected fragment and
 marks the missing side as unavailable.
@@ -143,7 +164,7 @@ gemini_thinking_level=high
 ```
 
 The shared `max_tokens` value is sent as OpenRouter `max_tokens` and Gemini
-`maxOutputTokens`. v29 requests Gemini thought summaries with
+`maxOutputTokens`. v30 requests Gemini thought summaries with
 `includeThoughts=true`; those summaries and OpenRouter reasoning are displayed
 only during the thinking phase. They are cleared when final-answer streaming
 starts. OpenRouter reasoning is returned when `reasoning_exclude=false`.
@@ -232,7 +253,7 @@ UI behavior:
 
 ## Direct Networking
 
-v29 opens ordinary direct HTTPS connections:
+v30 opens ordinary direct HTTPS connections:
 
 ```text
 AI pressed -> capture context

@@ -47,32 +47,38 @@
           "exitmenu": true
         },
         {
-          "name": "Enable AI Diagnostics",
+          "name": "Install AI Note v30 prompt order",
           "priority": 8,
+          "action": "./bin/install-ai-note-v30.sh",
+          "exitmenu": true
+        },
+        {
+          "name": "Enable AI Diagnostics",
+          "priority": 9,
           "action": "./bin/enable-ai-diagnostics.sh",
           "exitmenu": true
         },
         {
           "name": "Disable AI Diagnostics",
-          "priority": 9,
+          "priority": 10,
           "action": "./bin/disable-ai-diagnostics.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback Reader Plugin",
-          "priority": 10,
+          "priority": 11,
           "action": "./bin/rollback.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback AI Note Patch",
-          "priority": 11,
+          "priority": 12,
           "action": "./bin/rollback-ai.sh",
           "exitmenu": true
         },
         {
           "name": "Rollback Translator Jar",
-          "priority": 12,
+          "priority": 13,
           "action": "./bin/rollback-translator.sh",
           "exitmenu": true
         }

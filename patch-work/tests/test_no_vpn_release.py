@@ -41,14 +41,14 @@ class DirectSerbiaReleaseTest(unittest.TestCase):
         names = [item["name"] for item in items]
         actions = [item["action"] for item in items]
 
-        self.assertIn("Install AI Note v29 live thinking", names)
-        self.assertIn("./bin/install-ai-note-v29.sh", actions)
+        self.assertIn("Install AI Note v30 prompt order", names)
+        self.assertIn("./bin/install-ai-note-v30.sh", actions)
         self.assertNotIn("Start AI VPN Proxy", names)
         self.assertNotIn("Stop AI VPN Proxy", names)
 
-    def test_v29_installer_disables_legacy_vpn_setting_and_can_restore_it(self):
+    def test_v30_installer_disables_legacy_vpn_setting_and_can_restore_it(self):
         installer_path = (
-            ROOT / "kual-extension/nativepatch/bin/install-ai-note-v29.sh"
+            ROOT / "kual-extension/nativepatch/bin/install-ai-note-v30.sh"
         )
         installer = installer_path.read_text(encoding="utf-8")
 
@@ -56,18 +56,18 @@ class DirectSerbiaReleaseTest(unittest.TestCase):
         self.assertIn('set_prop vpn_enabled false', installer)
         self.assertIn("CONFIG_BACKUP=", installer)
         self.assertIn("restore_config_after_failure", installer)
-        self.assertIn("Reader-plugin.v29.jar", installer)
-        self.assertIn("ReaderSDK-impl.ai-v29.jar", installer)
+        self.assertIn("Reader-plugin.v30.jar", installer)
+        self.assertIn("ReaderSDK-impl.ai-v30.jar", installer)
 
-    def test_build_outputs_are_versioned_v29(self):
+    def test_build_outputs_are_versioned_v30(self):
         build = (
             ROOT / "patch-work/scripts/build_ai_note_patch.py"
         ).read_text(encoding="utf-8")
 
-        self.assertIn("classes-ai-v29", build)
-        self.assertIn("patched-ai-v29", build)
-        self.assertIn("ReaderSDK-impl.ai-v29.jar", build)
-        self.assertIn("Reader-plugin.v29.jar", build)
+        self.assertIn("classes-ai-v30", build)
+        self.assertIn("patched-ai-v30", build)
+        self.assertIn("ReaderSDK-impl.ai-v30.jar", build)
+        self.assertIn("Reader-plugin.v30.jar", build)
 
 
 if __name__ == "__main__":

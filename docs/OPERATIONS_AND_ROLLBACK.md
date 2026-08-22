@@ -15,12 +15,12 @@ If the Kindle is connected over USB, current artifacts live under:
 On Kindle, install through:
 
 ```text
-KUAL -> Native Reader Patch -> Install AI Note v29 live thinking
+KUAL -> Native Reader Patch -> Install AI Note v30 prompt order
 ```
 
 The installer:
 
-1. verifies the exact SHA-256 of both v29 jars and both rollback jars
+1. verifies the exact SHA-256 of both v30 jars and both rollback jars
 2. backs up the current Reader plugin and SDK jars under
    `/mnt/us/native-reader-research/backups`
 3. backs up `ai-assistant.properties` and sets the legacy
@@ -32,8 +32,8 @@ The installer:
    backups if activation fails
 7. makes a best-effort read-only remount and reboots
 
-The v29 installer does not rewrite `translator.jar` or delete historical VPN
-files needed by v27. The v29 runtime ignores those files and contains no VPN
+The v30 installer does not rewrite `translator.jar` or delete historical VPN
+files needed by v27. The v30 runtime ignores those files and contains no VPN
 start, stop, or proxy path.
 
 ## Current Config
@@ -150,7 +150,7 @@ configuration has `vpn_enabled=false`, so the runtime uses direct HTTPS.
 The current local candidate is:
 
 ```text
-AI Note v29 live thinking
+AI Note v30 prompt order
 ```
 
 It keeps the v28 direct-Serbia, reliable-dismiss, and large-card behavior and:
@@ -175,7 +175,7 @@ It keeps the v28 direct-Serbia, reliable-dismiss, and large-card behavior and:
 - cancellation of the previous stream/retries when a new mode is selected
 - direct HTTPS connections with no Xray lifecycle or HTTP proxy path
 
-The v29 jars require physical on-device validation after installation; host JVM
+The v30 jars require physical on-device validation after installation; host JVM
 tests cannot prove E-Ink layout or the Kindle touch event path.
 
 ## If Reader UI Freezes
@@ -197,13 +197,13 @@ reset can remove documents and homebrew launchers.
 The AI SDK jar and Reader plugin are built with:
 
 ```sh
-rm -rf patch-work/classes-ai-v29 patch-work/patched-ai-v29
-mkdir -p patch-work/classes-ai-v29
+rm -rf patch-work/classes-ai-v30 patch-work/patched-ai-v30
+mkdir -p patch-work/classes-ai-v30
 CP=$(printf '%s:' from-kindle/native-reader-research/jars/*.jar)
-javac --release 8 -cp "$CP" -d patch-work/classes-ai-v29 \
+javac --release 8 -cp "$CP" -d patch-work/classes-ai-v30 \
   $(find patch-work/stubs patch-work/src/com/amazon/ebook/booklet/reader/plugin/notesandmarks -name '*.java' -print)
-javac --release 8 -cp "$CP:patch-work/classes-ai-v29" \
-  -d patch-work/classes-ai-v29 \
+javac --release 8 -cp "$CP:patch-work/classes-ai-v30" \
+  -d patch-work/classes-ai-v30 \
   patch-work/src/com/amazon/ebook/booklet/reader/plugin/share/ShareSelectedTextAction.java
 python3 patch-work/scripts/build_ai_note_patch.py
 ```

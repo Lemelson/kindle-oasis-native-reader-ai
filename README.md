@@ -60,7 +60,7 @@ or bypass Kindle DRM.
 | Current device build | v28 was installed on 2026-08-09 |
 | Previous network behavior | v27 starts and stops a local Xray tunnel when `vpn_enabled=true` |
 | Current device network setting | `vpn_enabled=false`; v28 uses direct HTTPS |
-| Current staged candidate | v29 adds live Gemini/DeepSeek thinking states and includes the pending prompt/model policy changes |
+| Current staged candidate | v30 keeps v29 live thinking/model changes and adds the finalized prompt ordering |
 | Other Kindle models or firmware | Untested and unsupported |
 
 Version tags preserve the development checkpoints. GitHub Releases contain
