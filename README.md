@@ -230,3 +230,8 @@ text, VPN configuration, or other sensitive material.
 - [Jailbreak and device setup](docs/JAILBREAK_AND_DEVICE_SETUP.md)
 - [Patch history](PATCHLOG.md)
 - [Historical device cleanup](docs/DEVICE_CLEANUP_2026-07-24.md)
+
+## Related project
+
+- [kppfast](https://github.com/Lemelson/kindle-oasis-speedup): an unofficial speed-up for the stock Kindle Oasis 3
+  UI (Library page turn 0.70 s -> ~0.27 s, cross-page text selection fix), from the same author.
